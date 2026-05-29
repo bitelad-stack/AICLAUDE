@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code — Your Local AI Developer</title>
+
+  <!-- Fonts: Orbitron (display) + JetBrains Mono (code) + Rajdhani (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+  <!-- React 18 -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel (JSX in browser) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* ─── Reset ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ─── Tokens ─── */
+    :root {
+      --bg:          #03030d;
+      --bg2:         #060614;
+      --green:       #00ff9d;
+      --cyan:        #00e5ff;
+      --purple:      #7b2dff;
+      --white:       #e8eaff;
+      --muted:       #4a4a7a;
+      --card-bg:     #07071a;
+      --border-g:    rgba(0,255,157,0.15);
+      --border-c:    rgba(0,229,255,0.15);
+      --glow-g:      0 0 24px rgba(0,255,157,0.4), 0 0 80px rgba(0,255,157,0.1);
+      --glow-c:      0 0 24px rgba(0,229,255,0.4), 0 0 80px rgba(0,229,255,0.1);
+      --font-d:      'Orbitron', monospace;
+      --font-m:      'JetBrains Mono', monospace;
+      --font-b:      'Rajdhani', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: var(--font-b);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--green); border-radius: 3px; }
+
+    /* ─── Noise overlay ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.35;
+    }
+
+    /* ─── Navbar ─── */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 1.1rem 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border-g);
+      backdrop-filter: blur(24px);
+      background: rgba(3,3,13,0.75);
+    }
+    .nav-logo {
+      font-family: var(--font-d); font-size: 1rem; font-weight: 800;
+      color: var(--green); letter-spacing: 0.12em;
+      text-shadow: 0 0 18px rgba(0,255,157,0.5);
+    }
+    .nav-logo em { color: var(--cyan); font-style: normal; }
+    .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+    .nav-links a {
+      font-family: var(--font-b); font-size: 0.85rem; font-weight: 500;
+      color: var(--muted); text-decoration: none; letter-spacing: 0.06em;
+      text-transform: uppercase; transition: color 0.3s;
+    }
+    .nav-links a:hover { color: var(--cyan); }
+    .nav-cta {
+      padding: 0.45rem 1.4rem;
+      border: 1px solid var(--green);
+      color: var(--green); font-family: var(--font-m); font-size: 0.75rem;
+      letter-spacing: 0.1em; text-decoration: none; text-transform: uppercase;
+      transition: all 0.3s; background: transparent; cursor: pointer;
+    }
+    .nav-cta:hover {
+      background: var(--green); color: var(--bg); box-shadow: var(--glow-g);
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 9rem 3rem 5rem;
+      position: relative; overflow: hidden;
+    }
+    /* Grid */
+    .hero::after {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,157,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,157,0.025) 1px, transparent 1px);
+      background-size: 60px 60px; pointer-events: none;
+    }
+    /* Ambient orbs */
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(130px); pointer-events: none; z-index: 0;
+    }
+    .orb-a { width: 560px; height: 560px; background: rgba(0,255,157,0.055); top: -120px; right: -80px; }
+    .orb-b { width: 420px; height: 420px; background: rgba(0,229,255,0.055); bottom: 80px; left: -100px; }
+    .orb-c { width: 300px; height: 300px; background: rgba(123,45,255,0.04); top: 40%; left: 50%; transform: translateX(-50%); }
+
+    .hero-tag {
+      font-family: var(--font-m); font-size: 0.72rem; color: var(--green);
+      letter-spacing: 0.22em; text-transform: uppercase;
+      border: 1px solid var(--border-g); padding: 0.38rem 1.1rem;
+      margin-bottom: 2.2rem; position: relative; z-index: 1;
+      display: flex; align-items: center; gap: 0.7rem;
+    }
+    .hero-tag .dot {
+      width: 7px; height: 7px; background: var(--green); border-radius: 50%;
+      animation: pulse 2.2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.6); }
+      60%      { box-shadow: 0 0 0 7px rgba(0,255,157,0); }
+    }
+
+    .hero-headline {
+      font-family: var(--font-d); font-weight: 900; line-height: 1.0;
+      text-align: center; position: relative; z-index: 1;
+      margin-bottom: 1.6rem;
+    }
+    .h-line1 {
+      display: block; font-size: clamp(2.8rem,6.5vw,6rem);
+      color: var(--white); letter-spacing: -0.01em;
+    }
+    .h-accent {
+      display: block; font-size: clamp(3.2rem,7.5vw,7rem);
+      color: var(--green); letter-spacing: -0.02em;
+      position: relative; text-shadow: 0 0 60px rgba(0,255,157,0.25);
+    }
+    /* Glitch layers */
+    .h-accent::before, .h-accent::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; pointer-events: none;
+    }
+    .h-accent::before {
+      color: var(--cyan); animation: glitch1 6s infinite; animation-delay: 1s;
+    }
+    .h-accent::after {
+      color: #ff0066; animation: glitch2 6s infinite; animation-delay: 1.4s;
+    }
+    @keyframes glitch1 {
+      0%,90%,100% { clip-path: none; transform: none; }
+      92% { clip-path: inset(30% 0 55% 0); transform: translate(-3px,0); }
+      94% { clip-path: inset(65% 0 10% 0); transform: translate(3px,0); }
+      96% { clip-path: inset(10% 0 80% 0); transform: translate(-2px,0); }
+      98% { clip-path: inset(50% 0 30% 0); transform: translate(2px,0); }
+    }
+    @keyframes glitch2 {
+      0%,90%,100% { clip-path: none; transform: none; }
+      93% { clip-path: inset(60% 0 20% 0); transform: translate(3px,0); }
+      95% { clip-path: inset(20% 0 70% 0); transform: translate(-3px,0); }
+      97% { clip-path: inset(80% 0 5%  0); transform: translate(2px,0); }
+    }
+    .h-sub {
+      display: block; font-size: clamp(1.5rem,3.5vw,2.8rem);
+      color: var(--cyan); font-weight: 400; letter-spacing: 0.04em;
+      margin-top: 0.3rem;
+    }
+
+    .hero-sub {
+      font-family: var(--font-b); font-size: 1.15rem; font-weight: 400;
+      color: var(--muted); text-align: center; max-width: 560px;
+      line-height: 1.75; position: relative; z-index: 1; margin-bottom: 2.8rem;
+    }
+    .hero-sub strong { color: var(--white); font-weight: 600; }
+
+    .hero-ctas {
+      display: flex; gap: 1rem; position: relative; z-index: 1; margin-bottom: 3.5rem;
+    }
+    .btn-primary {
+      padding: 0.85rem 2.4rem; background: var(--green); color: var(--bg);
+      font-family: var(--font-d); font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      border: none; cursor: pointer; transition: all 0.3s; text-decoration: none;
+      display: inline-block; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .btn-primary:hover { box-shadow: var(--glow-g); transform: translateY(-3px); }
+    .btn-secondary {
+      padding: 0.85rem 2.4rem; background: transparent; color: var(--cyan);
+      font-family: var(--font-d); font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      border: 1px solid var(--border-c); cursor: pointer; transition: all 0.3s;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-secondary:hover { border-color: var(--cyan); box-shadow: var(--glow-c); transform: translateY(-3px); }
+
+    /* ─── Hero images ─── */
+    .hero-imgs {
+      display: flex; align-items: center; justify-content: center;
+      gap: 4rem; position: relative; z-index: 1;
+      width: 100%; max-width: 960px;
+      /* push images below CTAs */
+      margin-top: 0;
+    }
+
+    /* Each image is wrapped: outer div floats, inner img glows */
+    .img-float {
+      position: relative; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Bloom — radial halo sitting behind each image */
+    .img-bloom {
+      position: absolute; inset: -30%; border-radius: 50%;
+      pointer-events: none; z-index: 0;
+      filter: blur(55px);
+      animation: bloomPulse 3s ease-in-out infinite alternate;
+    }
+    .bloom-amber { background: radial-gradient(ellipse at center, rgba(255,157,0,0.28) 0%, transparent 70%); }
+    .bloom-green { background: radial-gradient(ellipse at center, rgba(0,255,157,0.22) 0%, transparent 70%); }
+
+    @keyframes bloomPulse {
+      from { opacity: 0.7; transform: scale(0.92); }
+      to   { opacity: 1.0; transform: scale(1.08); }
+    }
+
+    /* Actual images */
+    .img-float img {
+      position: relative; z-index: 1;
+      display: block; max-width: 100%; height: auto;
+      border-radius: 18px;
+    }
+
+    /* claude.jpg — warm amber accent, slower drift */
+    .float-claude {
+      animation: floatA 5s ease-in-out infinite;
+      transform-origin: center bottom;
+    }
+    .float-claude img {
+      max-height: 300px;
+      max-width: 300px;
+      object-fit: cover;
+      animation: glowAmber 2.8s ease-in-out infinite;
+    }
+
+    /* claudecode.png — neon green accent, slightly faster, offset phase */
+    .float-code {
+      animation: floatB 4s ease-in-out infinite;
+      animation-delay: 0.9s;
+      transform-origin: center bottom;
+    }
+    .float-code img {
+      max-height: 340px;
+      max-width: 380px;
+      object-fit: contain;
+      animation: glowGreen 2.4s ease-in-out infinite;
+      animation-delay: 0.4s;
+    }
+
+    /* Float keyframes — gentle vertical drift with a tiny tilt */
+    @keyframes floatA {
+      0%,100% { transform: translateY(0px)   rotate(-1.2deg); }
+      50%      { transform: translateY(-22px) rotate( 0.4deg); }
+    }
+    @keyframes floatB {
+      0%,100% { transform: translateY(0px)   rotate( 1.0deg); }
+      50%      { transform: translateY(-18px) rotate(-0.6deg); }
+    }
+
+    /* Glow keyframes — pulsing drop-shadow on the image itself */
+    @keyframes glowAmber {
+      0%,100% {
+        filter:
+          drop-shadow(0  0  12px rgba(255,157,0, 0.55))
+          drop-shadow(0  0  35px rgba(255,157,0, 0.25))
+          drop-shadow(0 20px 40px rgba(0,0,0,  0.65));
+      }
+      50% {
+        filter:
+          drop-shadow(0  0  26px rgba(255,157,0, 0.95))
+          drop-shadow(0  0  70px rgba(255,157,0, 0.45))
+          drop-shadow(0 20px 40px rgba(0,0,0,  0.65));
+      }
+    }
+    @keyframes glowGreen {
+      0%,100% {
+        filter:
+          drop-shadow(0  0  14px rgba(0,255,157, 0.55))
+          drop-shadow(0  0  40px rgba(0,255,157, 0.22))
+          drop-shadow(0 20px 45px rgba(0,0,0,   0.65));
+      }
+      50% {
+        filter:
+          drop-shadow(0  0  28px rgba(0,255,157, 0.95))
+          drop-shadow(0  0  75px rgba(0,255,157, 0.42))
+          drop-shadow(0 20px 45px rgba(0,0,0,   0.65));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .hero-imgs { flex-direction: column; gap: 2.5rem; }
+      .float-claude img, .float-code img { max-height: 200px; max-width: 260px; }
+    }
+
+    /* ─── 3D Tilt Card ─── */
+    .tilt-card {
+      display: inline-flex;
+      perspective: 850px;
+      perspective-origin: center center;
+      cursor: pointer;
+    }
+
+    /* The element that physically rotates in 3D space */
+    .tilt-inner {
+      display: inline-flex;
+      position: relative;
+      border-radius: 18px;
+      /* transform driven entirely by JS-set CSS vars */
+      transform: rotateX(var(--rotX, 0deg)) rotateY(var(--rotY, 0deg)) scale(var(--scale, 1));
+      transform-style: preserve-3d;
+      transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1);
+      will-change: transform;
+    }
+
+    /* Static glass sheen: a subtle diagonal highlight, always visible */
+    .tilt-inner::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 2;
+      pointer-events: none;
+      clip-path: inset(0 round 18px);
+      background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.09)  0%,
+        rgba(255,255,255,0.02) 38%,
+        rgba(255,255,255,0.00) 55%,
+        rgba(255,255,255,0.04) 100%
+      );
+    }
+
+    /* Glass edge ring: thin bright rim that pops on tilt */
+    .tilt-inner::after {
+      content: '';
+      position: absolute; inset: 0; z-index: 4;
+      pointer-events: none;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+    }
+
+    /* Dynamic mouse-tracking glare hotspot */
+    .tilt-glare {
+      position: absolute; inset: 0; z-index: 3;
+      pointer-events: none;
+      clip-path: inset(0 round 18px);
+      background: radial-gradient(
+        circle at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255,255,255, var(--glare-opacity, 0))  0%,
+        rgba(255,255,255, 0) 62%
+      );
+      /* second layer: chromatic-fringe streak across the card */
+      mask-image: linear-gradient(
+        calc(var(--glare-angle, 120deg)),
+        rgba(0,0,0,0.7) 0%,
+        rgba(0,0,0,1)   50%,
+        rgba(0,0,0,0.7) 100%
+      );
+    }
+
+    /* ─── Section shared ─── */
+    .section-wrap {
+      padding: 6rem 3rem;
+      max-width: 1220px;
+      margin: 0 auto;
+    }
+    .section-label {
+      font-family: var(--font-m); font-size: 0.68rem; color: var(--green);
+      letter-spacing: 0.28em; text-transform: uppercase;
+      display: flex; align-items: center; gap: 0.8rem; margin-bottom: 1.1rem;
+    }
+    .section-label::before { content: ''; width: 28px; height: 1px; background: var(--green); }
+    .section-title {
+      font-family: var(--font-d); font-size: clamp(1.8rem,3.5vw,3rem);
+      font-weight: 700; line-height: 1.1; margin-bottom: 0.9rem; color: var(--white);
+    }
+    .section-sub {
+      font-size: 1.05rem; color: var(--muted); max-width: 540px;
+      line-height: 1.75; margin-bottom: 3.5rem; font-weight: 400;
+    }
+
+    /* ─── Stats row ─── */
+    .stats-row {
+      display: flex; gap: 3rem; flex-wrap: wrap; margin-top: 2.5rem;
+    }
+    .stat { text-align: left; }
+    .stat-num {
+      font-family: var(--font-d); font-size: 2.4rem; font-weight: 900;
+      color: var(--green); line-height: 1;
+      text-shadow: 0 0 30px rgba(0,255,157,0.3);
+    }
+    .stat-label {
+      font-family: var(--font-b); font-size: 0.88rem; color: var(--muted); margin-top: 0.3rem;
+    }
+
+    /* ─── Terminal ─── */
+    .terminal-wrap { max-width: 800px; }
+    .terminal {
+      background: #080816;
+      border: 1px solid rgba(0,255,157,0.18);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 0 100px rgba(0,255,157,0.07), 0 32px 64px rgba(0,0,0,0.5);
+    }
+    .term-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.85rem 1.2rem;
+      background: #0c0c22; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .tdot { width: 12px; height: 12px; border-radius: 50%; }
+    .tdot-r { background: #ff5f57; }
+    .tdot-y { background: #febc2e; }
+    .tdot-g { background: #28c840; }
+    .term-title {
+      flex: 1; text-align: center;
+      font-family: var(--font-m); font-size: 0.72rem; color: var(--muted); letter-spacing: 0.05em;
+    }
+    .term-body {
+      padding: 1.4rem 1.6rem; font-family: var(--font-m); font-size: 0.84rem;
+      line-height: 1.85; min-height: 340px; max-height: 400px; overflow-y: auto;
+    }
+    .term-body::-webkit-scrollbar { width: 3px; }
+    .term-body::-webkit-scrollbar-thumb { background: rgba(0,255,157,0.3); }
+    .tl { display: flex; align-items: baseline; gap: 0.5rem; }
+    .t-prompt { color: var(--green); }
+    .t-cmd { color: var(--white); }
+    .t-out { color: #5a7a9a; }
+    .t-info { color: #facc15; }
+    .t-file { color: #c084fc; }
+    .t-ok { color: var(--green); }
+    .t-blank { height: 0.6rem; }
+    .cursor {
+      display: inline-block; width: 8px; height: 1em; background: var(--green);
+      vertical-align: text-bottom; animation: blink 1.1s step-end infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+    /* Callout pills below terminal */
+    .term-pills { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.8rem; }
+    .pill {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.6rem 1.1rem; border: 1px solid var(--border-g);
+      background: rgba(0,255,157,0.02); font-family: var(--font-b);
+    }
+    .pill-icon { font-size: 1rem; }
+    .pill-label { font-size: 0.88rem; color: var(--muted); }
+    .pill-label strong { color: var(--white); font-weight: 600; }
+
+    /* ─── Features ─── */
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+      border: 1px solid var(--border-g); background: var(--border-g);
+    }
+    .fcard {
+      background: var(--card-bg); padding: 2.2rem;
+      position: relative; overflow: hidden; transition: all 0.4s ease;
+    }
+    .fcard::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(0,255,157,0.05) 0%, transparent 55%);
+      opacity: 0; transition: opacity 0.4s;
+    }
+    .fcard:hover { background: #090920; }
+    .fcard:hover::before { opacity: 1; }
+    .fcard-glow-c::before { background: linear-gradient(135deg, rgba(0,229,255,0.05) 0%, transparent 55%); }
+    .fcard-glow-p::before { background: linear-gradient(135deg, rgba(123,45,255,0.05) 0%, transparent 55%); }
+    .fcard:hover { box-shadow: inset 0 0 60px rgba(0,255,157,0.04); }
+    .fcard-glow-c:hover { box-shadow: inset 0 0 60px rgba(0,229,255,0.04); }
+    .fcard-glow-p:hover { box-shadow: inset 0 0 60px rgba(123,45,255,0.04); }
+
+    .fcard-corner {
+      position: absolute; top: 0; right: 0;
+      width: 36px; height: 36px;
+      border-left: 1px solid rgba(0,255,157,0.2);
+      border-bottom: 1px solid rgba(0,255,157,0.2);
+      transition: border-color 0.3s;
+    }
+    .fcard:hover .fcard-corner { border-color: rgba(0,255,157,0.5); }
+    .fcard-glow-c .fcard-corner { border-color: rgba(0,229,255,0.2); }
+    .fcard-glow-c:hover .fcard-corner { border-color: rgba(0,229,255,0.5); }
+    .fcard-glow-p .fcard-corner { border-color: rgba(123,45,255,0.2); }
+    .fcard-glow-p:hover .fcard-corner { border-color: rgba(123,45,255,0.5); }
+
+    .fcard-icon { font-size: 2rem; margin-bottom: 1.3rem; display: block; }
+    .fcard-badge {
+      font-family: var(--font-m); font-size: 0.62rem; color: var(--green);
+      letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.6; margin-bottom: 0.7rem;
+    }
+    .fcard-glow-c .fcard-badge { color: var(--cyan); }
+    .fcard-glow-p .fcard-badge { color: #c084fc; }
+    .fcard-title {
+      font-family: var(--font-d); font-size: 1rem; font-weight: 700;
+      color: var(--white); margin-bottom: 0.75rem; letter-spacing: 0.02em;
+    }
+    .fcard-desc { font-size: 0.93rem; color: var(--muted); line-height: 1.72; }
+    .fcard-detail {
+      margin-top: 1.3rem; font-family: var(--font-m); font-size: 0.68rem;
+      color: rgba(0,255,157,0.4); border-top: 1px solid rgba(0,255,157,0.08);
+      padding-top: 0.8rem; letter-spacing: 0.05em;
+    }
+    .fcard-glow-c .fcard-detail { color: rgba(0,229,255,0.4); border-color: rgba(0,229,255,0.08); }
+    .fcard-glow-p .fcard-detail { color: rgba(192,132,252,0.4); border-color: rgba(123,45,255,0.08); }
+
+    /* ─── How To Use ─── */
+    .htu-wrap {
+      background: linear-gradient(180deg, transparent, rgba(0,255,157,0.018) 50%, transparent);
+      border-top: 1px solid var(--border-g); border-bottom: 1px solid var(--border-g);
+      padding: 6rem 3rem;
+    }
+    .htu-inner { max-width: 1220px; margin: 0 auto; }
+    .htu-grid { display: grid; grid-template-columns: 1fr 400px; gap: 4rem; align-items: start; }
+
+    .steps { display: flex; flex-direction: column; }
+    .step { display: flex; gap: 1.5rem; position: relative; padding-bottom: 2.4rem; }
+    .step:last-child { padding-bottom: 0; }
+    .step-spine { display: flex; flex-direction: column; align-items: center; }
+    .step-num {
+      width: 42px; height: 42px; flex-shrink: 0;
+      border: 1px solid var(--green); color: var(--green);
+      font-family: var(--font-m); font-size: 0.82rem;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,255,157,0.04); transition: all 0.3s;
+    }
+    .step:hover .step-num { background: rgba(0,255,157,0.12); box-shadow: var(--glow-g); }
+    .step-line {
+      width: 1px; flex: 1; margin-top: 6px; min-height: 30px;
+      background: linear-gradient(to bottom, rgba(0,255,157,0.25), transparent);
+    }
+    .step:last-child .step-line { display: none; }
+    .step-body { flex: 1; padding-top: 0.45rem; }
+    .step-title {
+      font-family: var(--font-d); font-size: 0.95rem; font-weight: 700;
+      color: var(--white); margin-bottom: 0.35rem; letter-spacing: 0.02em;
+    }
+    .step-desc { font-size: 0.92rem; color: var(--muted); margin-bottom: 0.75rem; line-height: 1.6; }
+    .step-cmd {
+      font-family: var(--font-m); font-size: 0.78rem; color: var(--green);
+      background: rgba(0,255,157,0.04); border: 1px solid var(--border-g);
+      padding: 0.48rem 1rem; display: inline-block; letter-spacing: 0.02em;
+    }
+    .step-cmd::before { content: '$ '; color: var(--muted); }
+
+    /* Command reference card */
+    .cmd-card {
+      background: var(--card-bg); border: 1px solid var(--border-c);
+      padding: 1.8rem; position: sticky; top: 90px;
+    }
+    .cmd-card-head {
+      font-family: var(--font-m); font-size: 0.65rem; color: var(--cyan);
+      letter-spacing: 0.22em; text-transform: uppercase;
+      margin-bottom: 1.4rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border-c);
+    }
+    .cmd-row { padding: 0.7rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .cmd-row:last-child { border-bottom: none; }
+    .cmd-row-text { font-family: var(--font-m); font-size: 0.77rem; color: var(--green); margin-bottom: 0.2rem; }
+    .cmd-row-text::before { content: '$ '; color: rgba(0,255,157,0.3); }
+    .cmd-row-explain { font-size: 0.84rem; color: var(--muted); line-height: 1.45; }
+
+    /* ─── Footer ─── */
+    .footer {
+      text-align: center; padding: 3rem;
+      border-top: 1px solid var(--border-g);
+      font-family: var(--font-m); font-size: 0.72rem; color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+    .footer em { color: var(--green); font-style: normal; }
+
+    /* ─── Divider ─── */
+    .divider {
+      max-width: 1220px; margin: 0 auto;
+      height: 1px; background: linear-gradient(90deg, transparent, var(--border-g), transparent);
+    }
+
+    /* ─── GSAP initial states ─── */
+    .gs-fade { opacity: 0; transform: translateY(32px); }
+    .gs-left { opacity: 0; transform: translateX(-30px); }
+    .gs-right { opacity: 0; transform: translateX(30px); }
+    .gs-scale { opacity: 0; transform: scale(0.94); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .htu-grid { grid-template-columns: 1fr; }
+      .cmd-card { position: static; }
+      .navbar { padding: 1rem 1.5rem; }
+      .nav-links { display: none; }
+      .section-wrap, .htu-wrap { padding: 4rem 1.5rem; }
+      .hero { padding: 7rem 1.5rem 4rem; }
+      .hero-ctas { flex-direction: column; align-items: center; }
+      .spline-zone { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    /* ══════════════════════════════════════
+       NAVBAR
+    ══════════════════════════════════════ */
+    function Navbar() {
+      return (
+        <nav className="navbar">
+          <div className="nav-logo">CLAUDE<em>.</em>CODE</div>
+          <ul className="nav-links">
+            <li><a href="#what">What Is It</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#get-started">Get Started</a></li>
+          </ul>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" className="nav-cta">Install Now</a>
+        </nav>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       TILT CARD
+    ══════════════════════════════════════ */
+    function TiltCard({ children }) {
+      const cardRef  = useRef(null);
+      const innerRef = useRef(null);
+
+      useEffect(() => {
+        const card  = cardRef.current;
+        const inner = innerRef.current;
+        if (!card || !inner) return;
+
+        const MAX_TILT  = 22;   // max rotation degrees
+        const MAX_GLARE = 0.42; // max glare opacity
+        let raf = null;
+
+        const apply = (rotX, rotY, gx, gy, go, sc, dur) => {
+          inner.style.transition = `transform ${dur}`;
+          inner.style.setProperty('--rotX',          `${rotX}deg`);
+          inner.style.setProperty('--rotY',          `${rotY}deg`);
+          inner.style.setProperty('--glare-x',       `${gx}%`);
+          inner.style.setProperty('--glare-y',       `${gy}%`);
+          inner.style.setProperty('--glare-opacity', go.toFixed(3));
+          inner.style.setProperty('--scale',         sc.toFixed(3));
+          // drive glare angle from mouse horizontal position
+          const angle = 90 + gx * 0.6;
+          inner.style.setProperty('--glare-angle', `${angle}deg`);
+        };
+
+        const onMove = (e) => {
+          if (raf) cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(() => {
+            const r  = card.getBoundingClientRect();
+            const x  = e.clientX - r.left;
+            const y  = e.clientY - r.top;
+            const nx = (x / r.width  - 0.5) * 2;   // −1 → 1
+            const ny = (y / r.height - 0.5) * 2;   // −1 → 1
+
+            const rotY = nx  * MAX_TILT;
+            const rotX = -ny * MAX_TILT;
+            const gx   = (x / r.width)  * 100;
+            const gy   = (y / r.height) * 100;
+            const dist = Math.min(Math.sqrt(nx * nx + ny * ny), 1);
+            const go   = dist * MAX_GLARE;
+
+            apply(rotX, rotY, gx, gy, go, 1.06, '0.07s ease-out');
+          });
+        };
+
+        const onLeave = () => {
+          if (raf) cancelAnimationFrame(raf);
+          apply(0, 0, 50, 50, 0, 1.0, '0.75s cubic-bezier(0.23,1,0.32,1)');
+        };
+
+        card.addEventListener('mousemove',  onMove);
+        card.addEventListener('mouseleave', onLeave);
+        return () => {
+          card.removeEventListener('mousemove',  onMove);
+          card.removeEventListener('mouseleave', onLeave);
+          if (raf) cancelAnimationFrame(raf);
+        };
+      }, []);
+
+      return (
+        <div className="tilt-card" ref={cardRef}>
+          <div className="tilt-inner" ref={innerRef}>
+            {children}
+            <div className="tilt-glare" />
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       HERO
+    ══════════════════════════════════════ */
+    function Hero() {
+      const ref = useRef(null);
+
+      useEffect(() => {
+        if (!window.gsap) return;
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+        tl.fromTo('.hero-tag',      { opacity:0, y:-20 }, { opacity:1, y:0, duration:0.7 }, 0.1)
+          .fromTo('.hero-headline', { opacity:0, y:50  }, { opacity:1, y:0, duration:1.0 }, 0.3)
+          .fromTo('.hero-sub',      { opacity:0, y:30  }, { opacity:1, y:0, duration:0.8 }, 0.6)
+          .fromTo('.hero-ctas',     { opacity:0, y:20  }, { opacity:1, y:0, duration:0.7 }, 0.8)
+          .fromTo('.spline-zone',   { opacity:0, scale:0.96 }, { opacity:1, scale:1, duration:1.0 }, 1.0);
+      }, []);
+
+      return (
+        <div className="hero" ref={ref}>
+          <div className="orb orb-a" /><div className="orb orb-b" /><div className="orb orb-c" />
+
+          <div className="hero-tag">
+            <span className="dot" />
+            Anthropic CLI &nbsp;·&nbsp; v1.x &nbsp;·&nbsp; Now Available
+          </div>
+
+          <h1 className="hero-headline">
+            <span className="h-line1">YOUR LOCAL</span>
+            <span className="h-accent" data-text="AI DEVELOPER">AI DEVELOPER</span>
+            <span className="h-sub">lives in your terminal.</span>
+          </h1>
+
+          <p className="hero-sub">
+            <strong>Claude Code</strong> is an agentic AI that reads your codebase, writes
+            real code, runs shell commands, and fixes its own bugs — autonomously,
+            right from your terminal.
+          </p>
+
+          <div className="hero-ctas">
+            <a href="#get-started" className="btn-primary">Get Started</a>
+            <a href="#how-it-works" className="btn-secondary">See It Work</a>
+          </div>
+
+          {/* ── Hero images ── */}
+          <div className="hero-imgs">
+            {/* claude.jpg — amber glow + 3D tilt */}
+            <div className="img-float float-claude">
+              <div className="img-bloom bloom-amber" />
+              <TiltCard>
+                <img src="claude.jpg" alt="Claude AI" />
+              </TiltCard>
+            </div>
+
+            {/* claudecode.png — green glow + 3D tilt */}
+            <div className="img-float float-code">
+              <div className="img-bloom bloom-green" />
+              <TiltCard>
+                <img src="claudecode.png" alt="Claude Code" />
+              </TiltCard>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       WHAT IS IT (section 01)
+    ══════════════════════════════════════ */
+    function WhatIsIt() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.registerPlugin(ScrollTrigger);
+        gsap.fromTo(ref.current.querySelectorAll('.gs-fade'),
+          { opacity:0, y:32 },
+          { opacity:1, y:0, duration:0.75, stagger:0.14, ease:'power2.out',
+            scrollTrigger: { trigger: ref.current, start:'top 78%' } });
+      }, []);
+
+      return (
+        <div id="what" className="section-wrap" ref={ref}>
+          <div className="section-label gs-fade">01 — What Is Claude Code</div>
+          <h2 className="section-title gs-fade" style={{maxWidth:'680px'}}>
+            An AI that actually<br /><em style={{color:'var(--green)',fontStyle:'normal'}}>does</em> the work.
+          </h2>
+          <p className="section-sub gs-fade">
+            Forget copy-pasting from a chat window. Claude Code lives locally, holds full context
+            of your entire project, and autonomously builds features, squashes bugs, writes tests,
+            and ships code — end to end.
+          </p>
+          <div className="stats-row">
+            {[
+              { n:'200k', l:'Token context window' },
+              { n:'<5s',  l:'Avg. response time' },
+              { n:'100%', l:'Local — your machine' },
+              { n:'∞',    l:'Languages supported' },
+            ].map((s,i) => (
+              <div className="stat gs-fade" key={i}>
+                <div className="stat-num">{s.n}</div>
+                <div className="stat-label">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       TERMINAL ANIMATION
+    ══════════════════════════════════════ */
+
+    const SCRIPT = [
+      // [type, text, delay-after-ms]
+      ['prompt', 'claude "build me a landing page for my SaaS"', 0],
+      ['blank', '', 280],
+      ['info',  '◆ Claude Code v1.x  —  reading your project...', 60],
+      ['out',   '  Scanning 52 files in ./src  ✓ context loaded', 50],
+      ['blank', '', 180],
+      ['out',   '  Planning: Hero → Features → Pricing → Footer', 45],
+      ['blank', '', 200],
+      ['file',  'CREATE  src/pages/Landing.tsx', 30],
+      ['file',  'CREATE  src/components/HeroSection.tsx', 30],
+      ['file',  'CREATE  src/components/FeatureGrid.tsx', 30],
+      ['file',  'CREATE  src/components/PricingTable.tsx', 30],
+      ['file',  'UPDATE  src/App.tsx', 30],
+      ['file',  'UPDATE  tailwind.config.js', 30],
+      ['blank', '', 280],
+      ['info',  '  Running: npm run typecheck', 45],
+      ['out',   '  TypeScript: no errors found  ✓', 45],
+      ['info',  '  Running: npm run build', 45],
+      ['out',   '  Vite build: dist/ 284 kB gzipped  ✓', 45],
+      ['blank', '', 200],
+      ['ok',    '✓ Done — 6 files modified in 3.8 s', 0],
+    ];
+
+    function TerminalDemo() {
+      const [lines, setLines]       = useState([]);
+      const [typed, setTyped]       = useState('');
+      const [phase, setPhase]       = useState('typing'); // typing | running | idle
+      const bodyRef = useRef(null);
+      const ids     = useRef([]);
+
+      const addT = (fn, ms) => { const id = setTimeout(fn, ms); ids.current.push(id); };
+      const clear = () => { ids.current.forEach(clearTimeout); ids.current = []; };
+
+      const run = () => {
+        setLines([]); setTyped(''); setPhase('typing');
+        const inputText = SCRIPT[0][1];
+        let delay = 600;
+
+        // Type the prompt character by character
+        for (let i = 0; i <= inputText.length; i++) {
+          const d = delay + i * 36;
+          addT(() => setTyped(inputText.slice(0, i)), d);
+        }
+        delay += inputText.length * 36 + 500;
+
+        // Commit input line, start output
+        addT(() => {
+          setPhase('running');
+          setTyped('');
+          setLines([{ t:'prompt', text: inputText }]);
+        }, delay);
+        delay += 300;
+
+        // Drip out the rest of the script
+        for (let i = 1; i < SCRIPT.length; i++) {
+          const [type, text, after] = SCRIPT[i];
+          addT(() => setLines(prev => [...prev, { t: type, text }]), delay);
+          delay += after + 55;
+        }
+
+        // Show idle cursor, then restart
+        addT(() => setPhase('idle'), delay + 200);
+        addT(() => { clear(); run(); }, delay + 4000);
+      };
+
+      useEffect(() => { run(); return clear; }, []);
+
+      useEffect(() => {
+        if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+      }, [lines, typed]);
+
+      const renderLine = (l, i) => {
+        if (l.t === 'blank') return <div key={i} className="t-blank" />;
+        const cls = { prompt:'t-cmd', out:'t-out', info:'t-info', file:'t-file', ok:'t-ok' }[l.t] || 't-out';
+        if (l.t === 'prompt') return (
+          <div key={i} className="tl"><span className="t-prompt">❯ </span><span className={cls}>{l.text}</span></div>
+        );
+        return <div key={i} className={`tl ${cls}`}>{l.text}</div>;
+      };
+
+      return (
+        <div className="terminal-wrap">
+          <div className="terminal">
+            <div className="term-bar">
+              <div className="tdot tdot-r" /><div className="tdot tdot-y" /><div className="tdot tdot-g" />
+              <div className="term-title">claude — bash — 96×30</div>
+            </div>
+            <div className="term-body" ref={bodyRef}>
+              {lines.map(renderLine)}
+              {phase === 'typing' && (
+                <div className="tl">
+                  <span className="t-prompt">❯ </span>
+                  <span className="t-cmd">{typed}</span>
+                  <span className="cursor" />
+                </div>
+              )}
+              {phase === 'idle' && (
+                <div className="tl"><span className="t-prompt">❯ </span><span className="cursor" /></div>
+              )}
+            </div>
+          </div>
+
+          <div className="term-pills">
+            {[
+              { icon:'🧠', label:<><strong>Full codebase context</strong> — not just snippets</> },
+              { icon:'⚡', label:<><strong>Runs real commands</strong> — npm, git, bash</> },
+              { icon:'🔁', label:<><strong>Self-correcting</strong> — retries on failure</> },
+            ].map((p,i) => (
+              <div key={i} className="pill">
+                <span className="pill-icon">{p.icon}</span>
+                <span className="pill-label">{p.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function HowItWorks() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.fromTo(ref.current.querySelectorAll('.gs-fade'),
+          { opacity:0, y:36 },
+          { opacity:1, y:0, duration:0.8, stagger:0.15, ease:'power2.out',
+            scrollTrigger: { trigger: ref.current, start:'top 75%' } });
+      }, []);
+
+      return (
+        <div id="how-it-works" className="section-wrap" ref={ref}>
+          <div className="section-label gs-fade">02 — How It Works</div>
+          <h2 className="section-title gs-fade">Talk to your terminal.<br />Watch code appear.</h2>
+          <p className="section-sub gs-fade">
+            Type a plain-English command. Claude reads your project, decides what to build,
+            writes the code, runs it, and iterates until everything passes.
+          </p>
+          <div className="gs-fade"><TerminalDemo /></div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       FEATURES
+    ══════════════════════════════════════ */
+    const FEATURES = [
+      { v:'',           icon:'🧠', badge:'CORE.01', title:'Context Awareness',
+        desc:'Claude reads your entire repo before doing anything. It understands your file structure, imports, naming conventions, and existing patterns — so generated code actually fits.',
+        detail:'Up to 200k tokens of project context' },
+      { v:'fcard-glow-c', icon:'⚡', badge:'CORE.02', title:'Terminal Execution',
+        desc:'Not just autocomplete — Claude runs real shell commands. It installs packages, executes tests, reads stdout/stderr, and reacts to every output in real time.',
+        detail:'Full bash access inside your environment' },
+      { v:'fcard-glow-p', icon:'🔧', badge:'CORE.03', title:'Autonomous Bug Fixing',
+        desc:'When a build fails, Claude reads the error, traces the root cause, edits the right file, and re-runs — looping until your tests are green.',
+        detail:'Multi-step agentic retry loops' },
+      { v:'',           icon:'📁', badge:'CORE.04', title:'Full File System',
+        desc:'Read, create, edit, rename, delete — Claude can touch any file in your project using structured diff tools that show exactly what changed.',
+        detail:'Precise edit tools — no overwriting by accident' },
+      { v:'fcard-glow-c', icon:'🔀', badge:'CORE.05', title:'Git Integration',
+        desc:'Claude commits, branches, writes meaningful commit messages, and can open pull requests — with full awareness of your git history and diff.',
+        detail:'git-native: status, commit, push, PR' },
+      { v:'fcard-glow-p', icon:'🔒', badge:'CORE.06', title:'Permission-Safe',
+        desc:"Every tool call is surfaced to you. Approve or deny file edits, shell commands, network requests. You're always the last line of defense.",
+        detail:'Human-in-the-loop — configurable trust levels' },
+    ];
+
+    function Features() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.fromTo(ref.current.querySelectorAll('.fcard'),
+          { opacity:0, y:48 },
+          { opacity:1, y:0, duration:0.65, stagger:0.08, ease:'power2.out',
+            scrollTrigger: { trigger: ref.current, start:'top 72%' } });
+      }, []);
+
+      return (
+        <div id="features" className="section-wrap" ref={ref}>
+          <div className="section-label gs-fade">03 — Core Capabilities</div>
+          <h2 className="section-title gs-fade">Built different.<br />Built for devs.</h2>
+          <p className="section-sub gs-fade">
+            Not a chat window, not a plugin. A genuine AI collaborator that owns tasks
+            from first prompt to final commit.
+          </p>
+          <div className="features-grid">
+            {FEATURES.map((f, i) => (
+              <div key={i} className={`fcard ${f.v}`}>
+                <div className="fcard-corner" />
+                <span className="fcard-icon">{f.icon}</span>
+                <div className="fcard-badge">{f.badge}</div>
+                <div className="fcard-title">{f.title}</div>
+                <p className="fcard-desc">{f.desc}</p>
+                <div className="fcard-detail">→ {f.detail}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       HOW TO USE
+    ══════════════════════════════════════ */
+    const STEPS = [
+      { title:'Get a Claude Pro or Max subscription',
+        desc:'Claude Code requires an active Claude Pro or Claude Max plan. Visit claude.ai/upgrade, choose your plan, and complete checkout. Free accounts cannot access Claude Code.',
+        cmd:'claude.ai/upgrade' },
+      { title:'Install Claude Code',
+        desc:'Once subscribed, install the CLI globally via npm. Requires Node.js 18+ on your machine.',
+        cmd:'npm install -g @anthropic-ai/claude-code' },
+      { title:'Log in with your Claude account',
+        desc:'Run the CLI — it opens a browser window to authenticate with the same account your Pro or Max subscription is on.',
+        cmd:'claude' },
+      { title:'Navigate to your project',
+        desc:'Change into any existing codebase, or start fresh in an empty folder. Claude reads your project from here.',
+        cmd:'cd my-project' },
+      { title:'Give it a task and iterate',
+        desc:'Describe what you want in plain English. Claude writes code, runs commands, and fixes errors autonomously. Approve or steer each step.',
+        cmd:'claude "add dark mode support to this app"' },
+    ];
+
+    const CMDS = [
+      { c:'claude',                      e:'Start interactive REPL session' },
+      { c:'claude "task"',               e:'One-shot task, then exit' },
+      { c:'claude --print "task"',       e:'Non-interactive, prints output' },
+      { c:'/help',                       e:'Show all slash commands' },
+      { c:'/clear',                      e:'Clear context, start fresh' },
+      { c:'/compact',                    e:'Compress context to save tokens' },
+      { c:'claude --model opus',         e:'Choose a specific Claude model' },
+      { c:'Shift + Tab',                 e:'Toggle auto-accept mode' },
+    ];
+
+    function HowToUse() {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.fromTo(ref.current.querySelectorAll('.step'),
+          { opacity:0, x:-30 },
+          { opacity:1, x:0, duration:0.6, stagger:0.1, ease:'power2.out',
+            scrollTrigger: { trigger: ref.current, start:'top 72%' } });
+        gsap.fromTo(ref.current.querySelector('.cmd-card'),
+          { opacity:0, x:30 },
+          { opacity:1, x:0, duration:0.8, ease:'power2.out',
+            scrollTrigger: { trigger: ref.current, start:'top 72%' } });
+      }, []);
+
+      return (
+        <div className="htu-wrap">
+          <div id="get-started" className="htu-inner" ref={ref}>
+            <div className="section-label">04 — Get Started</div>
+            <h2 className="section-title" style={{marginBottom:'0.8rem'}}>
+              From zero to agentic<br />in 60 seconds.
+            </h2>
+            <p className="section-sub">
+              Five steps — starting with the subscription you need — to have Claude Code writing real code in your terminal.
+            </p>
+
+            <div className="htu-grid">
+              {/* Steps */}
+              <div className="steps">
+                {STEPS.map((s, i) => (
+                  <div key={i} className="step">
+                    <div className="step-spine">
+                      <div className="step-num">0{i + 1}</div>
+                      <div className="step-line" />
+                    </div>
+                    <div className="step-body">
+                      <div className="step-title">{s.title}</div>
+                      <p className="step-desc">{s.desc}</p>
+                      <code className="step-cmd">{s.cmd}</code>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Command reference */}
+              <div className="cmd-card">
+                <div className="cmd-card-head">Quick Command Reference</div>
+                {CMDS.map((c, i) => (
+                  <div key={i} className="cmd-row">
+                    <div className="cmd-row-text">{c.c}</div>
+                    <div className="cmd-row-explain">{c.e}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       FOOTER
+    ══════════════════════════════════════ */
+    function Footer() {
+      return (
+        <footer className="footer">
+          <p>Built with <em>Claude Code</em> — Anthropic's agentic AI developer — {new Date().getFullYear()}</p>
+          <p style={{marginTop:'0.4rem',opacity:0.45}}>docs.anthropic.com/en/docs/claude-code</p>
+        </footer>
+      );
+    }
+
+    /* ══════════════════════════════════════
+       APP ROOT
+    ══════════════════════════════════════ */
+    function App() {
+      useEffect(() => {
+        if (window.gsap && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+      }, []);
+
+      return (
+        <>
+          <Navbar />
+          <Hero />
+          <div className="divider" />
+          <WhatIsIt />
+          <div className="divider" />
+          <HowItWorks />
+          <div className="divider" />
+          <Features />
+          <HowToUse />
+          <Footer />
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

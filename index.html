@@ -603,6 +603,132 @@
     .gs-right { opacity: 0; transform: translateX(30px); }
     .gs-scale { opacity: 0; transform: scale(0.94); }
 
+    /* ─── Claw'd Mascot ─── */
+
+    /* Outer wrapper: fixed position, no visual styling whatsoever.
+       CSS transition on left/top drives the smooth glide. */
+    .clawd-wrap {
+      position: fixed;
+      z-index: 9000;
+      cursor: pointer;
+      user-select: none;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0;
+      /* smooth positional glide — JS just sets new left/top targets */
+      transition: left 3s linear, top 3s linear;
+    }
+
+    /* Soft ambient glow on a pseudo-element, completely separated from
+       the image compositing so it cannot create a stacking-context box. */
+    .clawd-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -18px;
+      background: radial-gradient(ellipse at 50% 80%, rgba(255,140,0,0.30) 0%, transparent 68%);
+      filter: blur(12px);
+      pointer-events: none;
+      z-index: -1;
+    }
+    .clawd-wrap:hover::before {
+      background: radial-gradient(ellipse at 50% 80%, rgba(255,185,60,0.48) 0%, transparent 68%);
+    }
+
+    /* Flipper: the only thing this div does is hold the scaleX value
+       that the JS sets for walking direction. No visual styling. */
+    .clawd-flipper {
+      display: inline-block;
+      line-height: 0;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Canvas element — background removed by JS flood-fill, so
+       drop-shadow now correctly hugs the actual crab silhouette.
+       No mix-blend-mode required or wanted. */
+    .clawd-img {
+      display: block;
+      height: 50px;
+      width: auto;
+      filter:
+        drop-shadow(0 0 5px rgba(255,140,0,0.95))
+        drop-shadow(0 0 14px rgba(255,140,0,0.50));
+      animation: clawdWobble 0.5s infinite alternate linear;
+      transform-origin: center bottom;
+    }
+
+    @keyframes clawdWobble {
+      0%   { transform: rotate(-6deg) translateY(0px);  }
+      50%  { transform: rotate( 0deg) translateY(-5px); }
+      100% { transform: rotate( 6deg) translateY(0px);  }
+    }
+
+    /* Speech bubble */
+    .clawd-bubble {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(3,3,13,0.96);
+      border: 1px solid rgba(255,140,0,0.65);
+      border-radius: 4px;
+      padding: 0.5rem 0.85rem;
+      white-space: nowrap;
+      pointer-events: none;
+      text-align: center;
+      box-shadow:
+        0 0 16px rgba(255,140,0,0.3),
+        0 0 48px rgba(255,140,0,0.1),
+        inset 0 1px 0 rgba(255,180,70,0.1);
+      animation: bubblePop 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+
+    /* Downward arrow */
+    .clawd-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: rgba(255,140,0,0.65);
+    }
+
+    .clawd-bubble .cb-title {
+      display: block;
+      font-family: var(--font-m);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #ffb347;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.15rem;
+    }
+
+    .clawd-bubble .cb-sub {
+      display: block;
+      font-family: var(--font-m);
+      font-size: 0.65rem;
+      color: rgba(255,140,0,0.75);
+      letter-spacing: 0.04em;
+    }
+
+    @keyframes bubblePop {
+      from { opacity:0; transform: translateX(-50%) scale(0.82) translateY(6px); }
+      to   { opacity:1; transform: translateX(-50%) scale(1)    translateY(0);   }
+    }
+
+    /* Fade-out class added just before removal */
+    .clawd-bubble.hiding {
+      animation: bubbleFade 0.35s ease-out forwards;
+    }
+    @keyframes bubbleFade {
+      from { opacity:1; transform: translateX(-50%) scale(1) translateY(0); }
+      to   { opacity:0; transform: translateX(-50%) scale(0.9) translateY(-4px); }
+    }
+
     /* ─── Responsive ─── */
     @media (max-width: 900px) {
       .features-grid { grid-template-columns: 1fr; }
@@ -1130,6 +1256,188 @@
     /* ══════════════════════════════════════
        APP ROOT
     ══════════════════════════════════════ */
+    /* ══════════════════════════════════════
+       CLAW'D MASCOT
+    ══════════════════════════════════════ */
+    function Clawd() {
+      const wrapRef    = useRef(null);
+      const flipperRef = useRef(null);
+      const canvasRef  = useRef(null);   // replaces <img> — holds flood-filled pixels
+      const [showMsg, setShowMsg] = useState(false);
+      const [hiding,  setHiding]  = useState(false);
+      const hideTimer = useRef(null);
+      const fadeTimer = useRef(null);
+
+      /* ── Background removal: BFS flood-fill from every edge pixel ──────────
+         Why this works:
+           • Seeds from the entire image border.
+           • Any pixel that is "very dark" (near-black) AND reachable from the
+             border gets its alpha zeroed → background disappears.
+           • The black eyes are enclosed by orange pixels, so the BFS can never
+             reach them through the body — they stay solid black. ✓
+         Why not mix-blend-mode:
+           • blend modes cannot distinguish border-black from eye-black;
+             this algorithm can because it uses spatial connectivity, not color.
+      ── */
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        const img = new Image();
+        img.onload = () => {
+          const W = img.naturalWidth;
+          const H = img.naturalHeight;
+          canvas.width  = W;
+          canvas.height = H;
+          // Scale CSS display: fix height at 50 px, width proportional
+          canvas.style.height = '50px';
+          canvas.style.width  = `${Math.round(W * 50 / H)}px`;
+
+          ctx.drawImage(img, 0, 0);
+          const imgData = ctx.getImageData(0, 0, W, H);
+          const d = imgData.data;
+
+          // Threshold: a pixel counts as background if R,G,B are all below this
+          const T = 40;
+          const isBg = (pid) => {
+            const i = pid << 2;          // pid * 4
+            return d[i] < T && d[i+1] < T && d[i+2] < T;
+          };
+
+          const visited = new Uint8Array(W * H);
+          const queue   = new Int32Array(W * H); // pre-allocated, no GC pressure
+          let head = 0, tail = 0;
+
+          // Seed: all four edges
+          for (let x = 0; x < W; x++) {
+            const t = x,             b = (H-1)*W + x;
+            if (!visited[t] && isBg(t)) { visited[t]=1; queue[tail++]=t; }
+            if (!visited[b] && isBg(b)) { visited[b]=1; queue[tail++]=b; }
+          }
+          for (let y = 1; y < H-1; y++) {
+            const l = y*W,            r = y*W + W-1;
+            if (!visited[l] && isBg(l)) { visited[l]=1; queue[tail++]=l; }
+            if (!visited[r] && isBg(r)) { visited[r]=1; queue[tail++]=r; }
+          }
+
+          // BFS — iterative, 4-connected
+          while (head < tail) {
+            const pid = queue[head++];
+            d[(pid << 2) + 3] = 0;          // erase alpha
+
+            const x = pid % W;
+            const y = (pid / W) | 0;
+
+            if (x > 0)   { const n=pid-1; if (!visited[n]&&isBg(n)){visited[n]=1;queue[tail++]=n;} }
+            if (x < W-1) { const n=pid+1; if (!visited[n]&&isBg(n)){visited[n]=1;queue[tail++]=n;} }
+            if (y > 0)   { const n=pid-W; if (!visited[n]&&isBg(n)){visited[n]=1;queue[tail++]=n;} }
+            if (y < H-1) { const n=pid+W; if (!visited[n]&&isBg(n)){visited[n]=1;queue[tail++]=n;} }
+          }
+
+          ctx.putImageData(imgData, 0, 0);
+        };
+        img.src = 'clawd.png';
+      }, []);
+
+      /* ── Movement: CSS transition does the gliding, JS just sets targets ── */
+      useEffect(() => {
+        const wrap    = wrapRef.current;
+        const flipper = flipperRef.current;
+        if (!wrap || !flipper) return;
+
+        const H_PX   = 50;
+        const MARGIN = 16;
+        const TRAVEL = 3000; // ms — must match CSS transition duration
+
+        // Track current position so we can compute direction on each move
+        let curX = window.innerWidth * 0.4;
+        let curY = window.innerHeight - H_PX - MARGIN;
+
+        // Snap to start with no transition
+        wrap.style.transition = 'none';
+        wrap.style.left = `${curX}px`;
+        wrap.style.top  = `${curY}px`;
+
+        const pickTarget = () => {
+          const W    = window.innerWidth;
+          const H    = window.innerHeight;
+          const zone = Math.random();
+          if (zone < 0.60) {
+            // Bottom edge — full width
+            return { x: MARGIN + Math.random() * (W - H_PX - MARGIN * 2),
+                     y: H - H_PX - MARGIN };
+          } else if (zone < 0.80) {
+            // Left wall
+            return { x: MARGIN,
+                     y: 110 + Math.random() * (H - H_PX - 130) };
+          } else {
+            // Right wall
+            return { x: W - H_PX - MARGIN,
+                     y: 110 + Math.random() * (H - H_PX - 130) };
+          }
+        };
+
+        let timerId;
+        const move = () => {
+          const t  = pickTarget();
+          const dx = t.x - curX;
+
+          // Flip facing direction before the glide starts
+          if (Math.abs(dx) > 5) {
+            flipper.style.transform = dx > 0 ? 'scaleX(1)' : 'scaleX(-1)';
+          }
+
+          curX = t.x;
+          curY = t.y;
+
+          // Re-enable transition, then set the new target — CSS glides there
+          wrap.style.transition = `left ${TRAVEL}ms linear, top ${TRAVEL}ms linear`;
+          wrap.style.left = `${t.x}px`;
+          wrap.style.top  = `${t.y}px`;
+
+          // Wait for travel to finish, then pause, then move again
+          const pause = 500 + Math.random() * 2000;
+          timerId = setTimeout(move, TRAVEL + pause);
+        };
+
+        // Short delay before first move so the page settles
+        timerId = setTimeout(move, 400);
+        return () => clearTimeout(timerId);
+      }, []);
+
+      /* ── Click ── */
+      const handleClick = (e) => {
+        e.stopPropagation();
+        clearTimeout(hideTimer.current);
+        clearTimeout(fadeTimer.current);
+        setHiding(false);
+        setShowMsg(true);
+        hideTimer.current = setTimeout(() => {
+          setHiding(true);
+          fadeTimer.current = setTimeout(() => {
+            setShowMsg(false);
+            setHiding(false);
+          }, 350);
+        }, 2800);
+      };
+
+      return (
+        <div ref={wrapRef} className="clawd-wrap" onClick={handleClick} title="Click me!">
+          <div ref={flipperRef} className="clawd-flipper">
+            {/* canvas — background erased by BFS flood-fill in useEffect */}
+            <canvas ref={canvasRef} className="clawd-img" />
+          </div>
+          {showMsg && (
+            <div className={`clawd-bubble${hiding ? ' hiding' : ''}`}>
+              <span className="cb-title">Claw'd says hi! 👋</span>
+              <span className="cb-sub">Secrets coming soon…</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     function App() {
       useEffect(() => {
         if (window.gsap && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
@@ -1137,6 +1445,7 @@
 
       return (
         <>
+          <Clawd />
           <Navbar />
           <Hero />
           <div className="divider" />

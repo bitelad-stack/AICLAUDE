@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -47,7 +47,16 @@
     html { scroll-behavior: smooth; }
 
     body {
-      background: var(--bg);
+      /* Spotlight lives here as the bottom-most layer.
+         --mouse-x / --mouse-y are set by JS on :root and inherited.
+         Default off-screen so nothing shows before the first mousemove. */
+      background:
+        radial-gradient(
+          400px circle at var(--mouse-x, -600px) var(--mouse-y, -600px),
+          rgba(0, 255, 128, 0.4),
+          transparent 20%
+        ),
+        var(--bg);
       color: var(--white);
       font-family: var(--font-b);
       overflow-x: hidden;
@@ -472,6 +481,83 @@
     .pill-label { font-size: 0.88rem; color: var(--muted); }
     .pill-label strong { color: var(--white); font-weight: 600; }
 
+    /* ─── Interactive Terminal ─── */
+    .iterm {
+      background: #080816;
+      border: 1px solid rgba(0,255,157,0.18);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 100px rgba(0,255,157,0.07), 0 32px 64px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Scrollable output history */
+    .iterm-history {
+      flex: 1;
+      padding: 1.4rem 1.6rem;
+      font-family: var(--font-m);
+      font-size: 0.84rem;
+      line-height: 1.85;
+      min-height: 260px;
+      max-height: 360px;
+      overflow-y: auto;
+      cursor: text;
+    }
+    .iterm-history::-webkit-scrollbar { width: 3px; }
+    .iterm-history::-webkit-scrollbar-thumb { background: rgba(0,255,157,0.3); border-radius: 3px; }
+
+    /* Each row in the history */
+    .iterm-row { display: block; white-space: pre; min-height: 1.4em; }
+    .iterm-row--cmd { display: flex; gap: 0.55rem; margin-top: 0.65rem; white-space: normal; }
+
+    /* Color palette for output lines */
+    .iterm-g  { color: var(--green); }           /* system output */
+    .iterm-c  { color: var(--cyan); }            /* accent / highlights */
+    .iterm-w  { color: var(--white); }           /* emphasized content */
+    .iterm-m  { color: var(--muted); }           /* muted / secondary */
+    .iterm-in { color: #e8eaff; }               /* user-typed text echoed in history */
+
+    /* The glowing prompt label used in both history and input bar */
+    .iterm-prompt-label {
+      color: var(--green);
+      font-family: var(--font-m);
+      font-size: 0.84rem;
+      white-space: nowrap;
+      flex-shrink: 0;
+      text-shadow: 0 0 10px rgba(0,255,157,0.55);
+    }
+
+    /* Live input bar — pinned at the bottom */
+    .iterm-inputline {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.85rem 1.6rem;
+      border-top: 1px solid rgba(0,255,157,0.12);
+      background: rgba(0,255,157,0.022);
+      flex-shrink: 0;
+    }
+
+    .iterm-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      font-family: var(--font-m);
+      font-size: 0.84rem;
+      color: #e8eaff;
+      caret-color: var(--green);
+    }
+    .iterm-input::placeholder { color: var(--muted); opacity: 0.55; }
+    .iterm-input:disabled     { cursor: wait; }
+    /* Input bar dims and blocks pointer-events while the agent is running */
+    .iterm-running {
+      opacity: 0.5;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
     /* ─── Features ─── */
     .features-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
@@ -603,6 +689,14 @@
     .gs-right { opacity: 0; transform: translateX(30px); }
     .gs-scale { opacity: 0; transform: scale(0.94); }
 
+    /* ─── Mouse Spotlight ─── */
+    /* Gradient is on body background — no overlay div needed. */
+
+    /* Touch / no-hover: strip the dynamic gradient, restore solid background */
+    @media (hover: none), (pointer: coarse) {
+      body { background: var(--bg) !important; }
+    }
+
     /* ─── Claw'd Mascot ─── */
 
     /* Outer wrapper: fixed position, no visual styling whatsoever.
@@ -729,6 +823,60 @@
       to   { opacity:0; transform: translateX(-50%) scale(0.9) translateY(-4px); }
     }
 
+    /* ─── Language Toggle ─── */
+    .lang-toggle {
+      display: flex; align-items: center; gap: 0.3rem;
+      padding: 0.38rem 0.85rem;
+      border: 1px solid var(--border-c);
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-m); font-size: 0.72rem; letter-spacing: 0.06em;
+      cursor: pointer; transition: all 0.3s; white-space: nowrap;
+    }
+    .lang-toggle:hover { border-color: var(--cyan); color: var(--cyan); box-shadow: var(--glow-c); }
+    .lang-toggle .lt-on  { color: var(--white); font-weight: 700; }
+    .lang-toggle .lt-sep { color: var(--muted); margin: 0 0.12rem; opacity: 0.45; }
+
+    /* ─── RTL (Hebrew) ─── */
+    /* Global text direction */
+    [dir="rtl"] body            { text-align: right; }
+    /* Navbar */
+    [dir="rtl"] .navbar         { flex-direction: row-reverse; }
+    [dir="rtl"] .nav-links      { flex-direction: row-reverse; }
+    /* Hero */
+    [dir="rtl"] .hero-tag       { flex-direction: row-reverse; }
+    [dir="rtl"] .hero-sub,
+    [dir="rtl"] .h-sub          { unicode-bidi: plaintext; }
+    /* Section labels */
+    [dir="rtl"] .section-label  { flex-direction: row-reverse; }
+    [dir="rtl"] .section-label::before { display: none; }
+    [dir="rtl"] .section-label::after  { content:''; width:28px; height:1px; background:var(--green); }
+    /* Stats & features */
+    [dir="rtl"] .stats-row      { flex-direction: row-reverse; }
+    [dir="rtl"] .fcard          { text-align: right; }
+    [dir="rtl"] .fcard-corner   { right:auto; left:0; border-left:none; border-right:1px solid rgba(0,255,157,0.2); border-bottom:1px solid rgba(0,255,157,0.2); }
+    [dir="rtl"] .fcard-detail   { text-align: right; unicode-bidi: plaintext; }
+    /* Steps */
+    [dir="rtl"] .step           { flex-direction: row-reverse; }
+    [dir="rtl"] .step-body      { text-align: right; }
+    [dir="rtl"] .step-cmd       { direction: ltr; text-align: left; display: inline-block; }
+    /* Command card */
+    [dir="rtl"] .htu-grid       { direction: rtl; }
+    [dir="rtl"] .cmd-card       { text-align: right; }
+    [dir="rtl"] .cmd-row-text   { direction: ltr; text-align: left; unicode-bidi: embed; }
+    /* Terminal — always LTR */
+    [dir="rtl"] .iterm,
+    [dir="rtl"] .iterm-history,
+    [dir="rtl"] .iterm-inputline,
+    [dir="rtl"] .iterm-input,
+    [dir="rtl"] .term-title     { direction: ltr; text-align: left; }
+    /* Pill row */
+    [dir="rtl"] .term-pills     { flex-direction: row-reverse; }
+    /* Preserve center-aligned hero elements */
+    [dir="rtl"] .hero-headline,
+    [dir="rtl"] .hero-sub,
+    [dir="rtl"] .footer         { text-align: center; }
+
     /* ─── Responsive ─── */
     @media (max-width: 900px) {
       .features-grid { grid-template-columns: 1fr; }
@@ -752,17 +900,181 @@
     /* ══════════════════════════════════════
        NAVBAR
     ══════════════════════════════════════ */
+    /* ══════════════════════════════════════
+       i18n — Language Context + Translations
+    ══════════════════════════════════════ */
+    const LangCtx = React.createContext(null);
+    const useLang = () => React.useContext(LangCtx);
+
+    const TRANSLATIONS = {
+      en: {
+        /* nav */
+        navWhat:'What Is It', navHow:'How It Works',
+        navFeatures:'Features', navStart:'Get Started', navInstall:'Install Now',
+        /* hero */
+        heroTag:'Anthropic CLI · v1.x · Now Available',
+        heroL1:'YOUR LOCAL', heroAccent:'AI DEVELOPER', heroSub:'lives in your terminal.',
+        heroDesc:'Claude Code is an agentic AI that reads your codebase, writes real code, runs shell commands, and fixes its own bugs — autonomously, right from your terminal.',
+        heroCta1:'Get Started', heroCta2:'See It Work',
+        /* section 01 */
+        s01Label:'01 — What Is Claude Code',
+        s01TitleA:'An AI that actually', s01TitleEm:'does', s01TitleB:'the work.',
+        s01Sub:'Forget copy-pasting from a chat window. Claude Code lives locally, holds full context of your entire project, and autonomously builds features, squashes bugs, writes tests, and ships code — end to end.',
+        stat1:'Token context window', stat2:'Avg. response time',
+        stat3:'Local — your machine', stat4:'Languages supported',
+        /* section 02 */
+        s02Label:'02 — How It Works',
+        s02Title:'Try it yourself.\nType a command below.',
+        s02Sub:'This is a real interactive terminal. Type help, about, or claude and press Enter.',
+        /* section 03 */
+        s03Label:'03 — Core Capabilities',
+        s03Title:'Built different.\nBuilt for devs.',
+        s03Sub:'Not a chat window, not a plugin. A genuine AI collaborator that owns tasks from first prompt to final commit.',
+        /* section 04 */
+        s04Label:'04 — Get Started',
+        s04Title:'From zero to agentic\nin 60 seconds.',
+        s04Sub:'Five steps — starting with the subscription you need — to have Claude Code writing real code in your terminal.',
+        /* footer */
+        /* features */
+        f01t:'Context Awareness',
+        f01d:'Claude reads your entire repo before doing anything. It understands your file structure, imports, naming conventions, and existing patterns — so generated code actually fits.',
+        f01x:'Up to 200k tokens of project context',
+        f02t:'Terminal Execution',
+        f02d:'Not just autocomplete — Claude runs real shell commands. It installs packages, executes tests, reads stdout/stderr, and reacts to every output in real time.',
+        f02x:'Full bash access inside your environment',
+        f03t:'Autonomous Bug Fixing',
+        f03d:'When a build fails, Claude reads the error, traces the root cause, edits the right file, and re-runs — looping until your tests are green.',
+        f03x:'Multi-step agentic retry loops',
+        f04t:'Full File System',
+        f04d:'Read, create, edit, rename, delete — Claude can touch any file in your project using structured diff tools that show exactly what changed.',
+        f04x:'Precise edit tools — no overwriting by accident',
+        f05t:'Git Integration',
+        f05d:'Claude commits, branches, writes meaningful commit messages, and can open pull requests — with full awareness of your git history and diff.',
+        f05x:'git-native: status, commit, push, PR',
+        f06t:'Permission-Safe',
+        f06d:"Every tool call is surfaced to you. Approve or deny file edits, shell commands, network requests. You're always the last line of defense.",
+        f06x:'Human-in-the-loop — configurable trust levels',
+        /* steps */
+        st1t:'Get a Claude Pro or Max subscription',
+        st1d:'Claude Code requires an active Claude Pro or Claude Max plan. Visit claude.ai/upgrade, choose your plan, and complete checkout. Free accounts cannot access Claude Code.',
+        st2t:'Install Claude Code',
+        st2d:'Once subscribed, install the CLI globally via npm. Requires Node.js 18+ on your machine.',
+        st3t:'Log in with your Claude account',
+        st3d:'Run the CLI — it opens a browser window to authenticate with the same account your Pro or Max subscription is on.',
+        st4t:'Navigate to your project',
+        st4d:'Change into any existing codebase, or start fresh in an empty folder. Claude reads your project from here.',
+        st5t:'Give it a task and iterate',
+        st5d:'Describe what you want in plain English. Claude writes code, runs commands, and fixes errors autonomously. Approve or steer each step.',
+        /* command reference */
+        cmdRef:'Quick Command Reference',
+        cmd1e:'Start interactive REPL session',
+        cmd2e:'One-shot task, then exit',
+        cmd3e:'Non-interactive, prints output',
+        cmd4e:'Show all slash commands',
+        cmd5e:'Clear context, start fresh',
+        cmd6e:'Compress context to save tokens',
+        cmd7e:'Choose a specific Claude model',
+        cmd8e:'Toggle auto-accept mode',
+        footerText:"Built with Claude Code — Anthropic's agentic AI developer",
+      },
+      he: {
+        /* nav */
+        navWhat:'מה זה', navHow:'איך זה עובד',
+        navFeatures:'יכולות', navStart:'התחל', navInstall:'התקן',
+        /* hero */
+        heroTag:'כלי CLI של Anthropic · v1.x · זמין עכשיו',
+        heroL1:'המפתח', heroAccent:'ה-AI שלך', heroSub:'גר בטרמינל שלך.',
+        heroDesc:'Claude Code הוא סוכן AI שקורא את קוד הבסיס שלך, כותב קוד אמיתי, מריץ פקודות שורת פקודה ומתקן באגים בעצמו — באופן אוטונומי, ישירות מהטרמינל.',
+        heroCta1:'התחל עכשיו', heroCta2:'ראה איך זה עובד',
+        /* section 01 */
+        s01Label:'01 — מה זה Claude Code',
+        s01TitleA:'AI שבאמת', s01TitleEm:'עושה', s01TitleB:'את העבודה.',
+        s01Sub:'שכח מהעתקה-הדבקה מחלון צ\'אט. Claude Code חי אצלך, שומר הקשר מלא של הפרויקט, ובאופן אוטונומי מפתח תכונות, מתקן באגים, כותב בדיקות ומשחרר קוד — מקצה לקצה.',
+        stat1:'טוקנים בחלון ההקשר', stat2:'זמן תגובה ממוצע',
+        stat3:'מקומי — המחשב שלך', stat4:'שפות נתמכות',
+        /* section 02 */
+        s02Label:'02 — איך זה עובד',
+        s02Title:'נסה בעצמך.\nהקלד פקודה למטה.',
+        s02Sub:'זהו טרמינל אינטראקטיבי אמיתי. הקלד help, about, או claude ולחץ Enter.',
+        /* section 03 */
+        s03Label:'03 — יכולות מרכזיות',
+        s03Title:'בנוי אחרת.\nבנוי למפתחים.',
+        s03Sub:'לא חלון צ\'אט, לא תוסף. שותף AI אמיתי שלוקח בעלות על משימות מהפרומפט הראשון ועד ה-commit האחרון.',
+        /* section 04 */
+        s04Label:'04 — התחל עכשיו',
+        s04Title:'מאפס לאוטונומי\nתוך 60 שניות.',
+        s04Sub:'חמישה שלבים — החל מהמנוי הנדרש — כדי ש-Claude Code יכתוב קוד אמיתי בטרמינל שלך.',
+        /* footer */
+        /* features */
+        f01t:'מודעות להקשר',
+        f01d:'Claude קורא את כל הרפוזיטורי שלך לפני שעושה דבר. הוא מבין את מבנה הקבצים, ה-imports, מוסכמות השמות והתבניות הקיימות — כך שהקוד שנוצר מתאים בדיוק.',
+        f01x:'עד 200k טוקנים של הקשר פרויקט',
+        f02t:'הרצה בטרמינל',
+        f02d:'לא רק השלמה אוטומטית — Claude מריץ פקודות shell אמיתיות. הוא מתקין חבילות, מריץ בדיקות, קורא פלט ומגיב לכל output בזמן אמת.',
+        f02x:'גישה מלאה ל-bash בסביבה שלך',
+        f03t:'תיקון באגים אוטונומי',
+        f03d:'כשהבנייה נכשלת, Claude קורא את השגיאה, מאתר את שורש הבעיה, עורך את הקובץ הנכון ומריץ שוב — בלופ עד שהבדיקות עוברות.',
+        f03x:'לולאות ניסיון חוזר רב-שלביות',
+        f04t:'מערכת קבצים מלאה',
+        f04d:'קריאה, יצירה, עריכה, שינוי שם, מחיקה — Claude יכול לגעת בכל קובץ בפרויקט שלך עם כלי diff מובנים שמציגים בדיוק מה השתנה.',
+        f04x:'כלי עריכה מדויקים — ללא החלפה בשגגה',
+        f05t:'שילוב Git',
+        f05d:'Claude עושה commits, מסתעף, כותב הודעות commit משמעותיות ויכול לפתוח pull requests — עם מודעות מלאה להיסטוריית ה-git שלך.',
+        f05x:'git-native: status, commit, push, PR',
+        f06t:'בטוח מבחינת הרשאות',
+        f06d:'כל קריאת כלי מוצגת לך. אשר או דחה עריכות קבצים, פקודות shell, בקשות רשת. אתה תמיד קו ההגנה האחרון.',
+        f06x:'בקרת אדם-בלולאה — רמות אמון ניתנות להגדרה',
+        /* steps */
+        st1t:'קבל מנוי Claude Pro או Max',
+        st1d:'Claude Code דורש מנוי Claude Pro או Max פעיל. בקר ב-claude.ai/upgrade, בחר את התוכנית שלך, והשלם את הרכישה. חשבונות חינמיים אינם יכולים לגשת ל-Claude Code.',
+        st2t:'התקן את Claude Code',
+        st2d:'לאחר המנוי, התקן את ה-CLI גלובלית דרך npm. דורש Node.js 18+ במחשב שלך.',
+        st3t:'התחבר עם חשבון Claude שלך',
+        st3d:'הרץ את ה-CLI — הוא פותח חלון דפדפן לאימות עם אותו חשבון שעליו המנוי שלך.',
+        st4t:'נווט לפרויקט שלך',
+        st4d:'עבור לכל codebase קיים, או התחל מחדש בתיקייה ריקה. Claude קורא את הפרויקט שלך מכאן.',
+        st5t:'תן לו משימה ותרץ בלופ',
+        st5d:'תאר מה אתה רוצה. Claude כותב קוד, מריץ פקודות ומתקן שגיאות באופן אוטונומי. אשר או הכוון כל שלב.',
+        /* command reference */
+        cmdRef:'מדריך פקודות מהיר',
+        cmd1e:'התחל סשן REPL אינטראקטיבי',
+        cmd2e:'משימה חד-פעמית, ואז יציאה',
+        cmd3e:'לא אינטראקטיבי, מדפיס פלט',
+        cmd4e:'הצג את כל פקודות ה-slash',
+        cmd5e:'נקה הקשר, התחל מחדש',
+        cmd6e:'דחוס הקשר לחיסכון בטוקנים',
+        cmd7e:'בחר מודל Claude ספציפי',
+        cmd8e:'הפעל/כבה מצב קבלה אוטומטית',
+        footerText:'נבנה עם Claude Code — מפתח ה-AI האוטונומי של Anthropic',
+      },
+    };
+
     function Navbar() {
+      const { lang, setLang, t } = useLang();
       return (
         <nav className="navbar">
           <div className="nav-logo">CLAUDE<em>.</em>CODE</div>
           <ul className="nav-links">
-            <li><a href="#what">What Is It</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#features">Features</a></li>
-            <li><a href="#get-started">Get Started</a></li>
+            <li><a href="#what">{t('navWhat')}</a></li>
+            <li><a href="#how-it-works">{t('navHow')}</a></li>
+            <li><a href="#features">{t('navFeatures')}</a></li>
+            <li><a href="#get-started">{t('navStart')}</a></li>
           </ul>
-          <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" className="nav-cta">Install Now</a>
+          <div style={{display:'flex',alignItems:'center',gap:'0.7rem'}}>
+            <button
+              className="lang-toggle"
+              onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
+              aria-label="Toggle language"
+            >
+              🌐
+              <span className={lang==='en' ? 'lt-on' : ''}>EN</span>
+              <span className="lt-sep">|</span>
+              <span className={lang==='he' ? 'lt-on' : ''}>HE</span>
+            </button>
+            <a href="https://docs.anthropic.com/en/docs/claude-code/overview" target="_blank" className="nav-cta">
+              {t('navInstall')}
+            </a>
+          </div>
         </nav>
       );
     }
@@ -844,6 +1156,7 @@
        HERO
     ══════════════════════════════════════ */
     function Hero() {
+      const { t } = useLang();
       const ref = useRef(null);
 
       useEffect(() => {
@@ -862,24 +1175,22 @@
 
           <div className="hero-tag">
             <span className="dot" />
-            Anthropic CLI &nbsp;·&nbsp; v1.x &nbsp;·&nbsp; Now Available
+            {t('heroTag')}
           </div>
 
           <h1 className="hero-headline">
-            <span className="h-line1">YOUR LOCAL</span>
-            <span className="h-accent" data-text="AI DEVELOPER">AI DEVELOPER</span>
-            <span className="h-sub">lives in your terminal.</span>
+            <span className="h-line1">{t('heroL1')}</span>
+            <span className="h-accent" data-text={t('heroAccent')}>{t('heroAccent')}</span>
+            <span className="h-sub">{t('heroSub')}</span>
           </h1>
 
           <p className="hero-sub">
-            <strong>Claude Code</strong> is an agentic AI that reads your codebase, writes
-            real code, runs shell commands, and fixes its own bugs — autonomously,
-            right from your terminal.
+            <strong>Claude Code</strong> — {t('heroDesc')}
           </p>
 
           <div className="hero-ctas">
-            <a href="#get-started" className="btn-primary">Get Started</a>
-            <a href="#how-it-works" className="btn-secondary">See It Work</a>
+            <a href="#get-started" className="btn-primary">{t('heroCta1')}</a>
+            <a href="#how-it-works" className="btn-secondary">{t('heroCta2')}</a>
           </div>
 
           {/* ── Hero images ── */}
@@ -908,6 +1219,7 @@
        WHAT IS IT (section 01)
     ══════════════════════════════════════ */
     function WhatIsIt() {
+      const { t } = useLang();
       const ref = useRef(null);
       useEffect(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
@@ -920,25 +1232,22 @@
 
       return (
         <div id="what" className="section-wrap" ref={ref}>
-          <div className="section-label gs-fade">01 — What Is Claude Code</div>
+          <div className="section-label gs-fade">{t('s01Label')}</div>
           <h2 className="section-title gs-fade" style={{maxWidth:'680px'}}>
-            An AI that actually<br /><em style={{color:'var(--green)',fontStyle:'normal'}}>does</em> the work.
+            {t('s01TitleA')}<br />
+            <em style={{color:'var(--green)',fontStyle:'normal'}}>{t('s01TitleEm')}</em> {t('s01TitleB')}
           </h2>
-          <p className="section-sub gs-fade">
-            Forget copy-pasting from a chat window. Claude Code lives locally, holds full context
-            of your entire project, and autonomously builds features, squashes bugs, writes tests,
-            and ships code — end to end.
-          </p>
+          <p className="section-sub gs-fade">{t('s01Sub')}</p>
           <div className="stats-row">
             {[
-              { n:'200k', l:'Token context window' },
-              { n:'<5s',  l:'Avg. response time' },
-              { n:'100%', l:'Local — your machine' },
-              { n:'∞',    l:'Languages supported' },
+              { n:'200k', lk:'stat1' },
+              { n:'<5s',  lk:'stat2' },
+              { n:'100%', lk:'stat3' },
+              { n:'∞',    lk:'stat4' },
             ].map((s,i) => (
               <div className="stat gs-fade" key={i}>
                 <div className="stat-num">{s.n}</div>
-                <div className="stat-label">{s.l}</div>
+                <div className="stat-label">{t(s.lk)}</div>
               </div>
             ))}
           </div>
@@ -950,126 +1259,257 @@
        TERMINAL ANIMATION
     ══════════════════════════════════════ */
 
-    const SCRIPT = [
-      // [type, text, delay-after-ms]
-      ['prompt', 'claude "build me a landing page for my SaaS"', 0],
-      ['blank', '', 280],
-      ['info',  '◆ Claude Code v1.x  —  reading your project...', 60],
-      ['out',   '  Scanning 52 files in ./src  ✓ context loaded', 50],
-      ['blank', '', 180],
-      ['out',   '  Planning: Hero → Features → Pricing → Footer', 45],
-      ['blank', '', 200],
-      ['file',  'CREATE  src/pages/Landing.tsx', 30],
-      ['file',  'CREATE  src/components/HeroSection.tsx', 30],
-      ['file',  'CREATE  src/components/FeatureGrid.tsx', 30],
-      ['file',  'CREATE  src/components/PricingTable.tsx', 30],
-      ['file',  'UPDATE  src/App.tsx', 30],
-      ['file',  'UPDATE  tailwind.config.js', 30],
-      ['blank', '', 280],
-      ['info',  '  Running: npm run typecheck', 45],
-      ['out',   '  TypeScript: no errors found  ✓', 45],
-      ['info',  '  Running: npm run build', 45],
-      ['out',   '  Vite build: dist/ 284 kB gzipped  ✓', 45],
-      ['blank', '', 200],
-      ['ok',    '✓ Done — 6 files modified in 3.8 s', 0],
+    /* ══ Interactive Terminal: command responses ══ */
+    const CMD_RESPONSES = {
+      help: [
+        { c:'g', v:'Available commands:' },
+        { c:'g', v:'' },
+        { c:'c', v:'  help      — show this list' },
+        { c:'c', v:'  about     — what is Claude Code?' },
+        { c:'c', v:'  pricing   — plans & pricing info' },
+        { c:'c', v:"  claude    — say hi to Claw'd" },
+        { c:'c', v:'  clear     — clear the terminal' },
+        { c:'g', v:'' },
+        { c:'m', v:"Tip: type 'claude' for a surprise." },
+      ],
+      about: [
+        { c:'g', v:'Claude Code is an agentic AI coding tool by Anthropic.' },
+        { c:'g', v:'' },
+        { c:'w', v:'  ✓  Reads your full codebase (200k token context)' },
+        { c:'w', v:'  ✓  Writes real code, runs real shell commands' },
+        { c:'w', v:'  ✓  Fixes its own bugs until tests pass' },
+        { c:'w', v:'  ✓  Commits, creates PRs, ships end-to-end' },
+        { c:'g', v:'' },
+        { c:'c', v:'No browser tab. No copy-paste. Just describe it.' },
+      ],
+      pricing: [
+        { c:'g', v:'Claude Code requires a paid Claude subscription.' },
+        { c:'g', v:'' },
+        { c:'c', v:'  Claude Pro   →  $20 / month' },
+        { c:'c', v:'  Claude Max   →  $100 / month' },
+        { c:'g', v:'' },
+        { c:'g', v:'Visit claude.ai/upgrade to get started.' },
+      ],
+      claude: [
+        { c:'g', v:'' },
+        { c:'m', v:'  · · · · · · · · · · · · · · · · · ·' },
+        { c:'g', v:"  ·  ____  _                 _       ·" },
+        { c:'c', v:"  · / ___|| | __ _ _   _  __| |  ·   " },
+        { c:'g', v:"  · | |   | |/ _` | | | |/ _` |  ·   " },
+        { c:'c', v:"  · | |___| | (_| | |_| | (_| |  ·   " },
+        { c:'g', v:"  ·  \\____|_|\\__,_|\\__,_|\\__,_|  ·   " },
+        { c:'c', v:"  ·    / ___|___   __| | ___     ·    " },
+        { c:'g', v:"  ·   | |   / _ \\ / _` |/ _ \\   ·   " },
+        { c:'c', v:"  ·   | |__| (_) | (_| |  __/   ·    " },
+        { c:'g', v:"  ·    \\____\\___/ \\__,_|\\___|   ·   " },
+        { c:'m', v:'  · · · · · · · · · · · · · · · · · ·' },
+        { c:'g', v:'' },
+        { c:'c', v:'  "I\'ve read your codebase. We need to talk."' },
+        { c:'m', v:'                     — Claude, probably' },
+        { c:'g', v:'' },
+        { c:'g', v:'  Status  : ONLINE ✓' },
+        { c:'g', v:'  Context : 200,000 tokens ready' },
+        { c:'g', v:'' },
+      ],
+    };
+
+    const INIT_MSGS = [
+      { c:'m', v:'Claude Code Terminal  —  interactive demo' },
+      { c:'m', v:'──────────────────────────────────────────' },
+      { c:'g', v:"Type 'help' to see available commands." },
     ];
 
-    function TerminalDemo() {
-      const [lines, setLines]       = useState([]);
-      const [typed, setTyped]       = useState('');
-      const [phase, setPhase]       = useState('typing'); // typing | running | idle
-      const bodyRef = useRef(null);
-      const ids     = useRef([]);
+    /* ── Agent mode constants (outside component to avoid recreation) ── */
+    const ACTION_WORDS = [
+      'make','build','create','write','code','generate','deploy','fix','refactor','add',
+      'תבנה','תעשה','אתר','כתוב','צור','פתח',
+    ];
+    const GREET_WORDS = ['hello','hi','hey','sup','yo','greetings','שלום'];
 
-      const addT = (fn, ms) => { const id = setTimeout(fn, ms); ids.current.push(id); };
-      const clear = () => { ids.current.forEach(clearTimeout); ids.current = []; };
+    const getMockCode = (raw) => {
+      const s = raw.toLowerCase();
+      if (/python|\.py|script|data|ml|model|flask|django/i.test(s)) return [
+        { c:'m', v:'  # claude-code: generated output' },
+        { c:'c', v:'  from anthropic import Anthropic' },
+        { c:'g', v:'' },
+        { c:'c', v:'  client = Anthropic()' },
+        { c:'g', v:'  result = client.agent.run(' },
+        { c:'g', v:'    task=prompt, tools=["bash","edit","read"]' },
+        { c:'g', v:'  )' },
+        { c:'c', v:'  print(f"✓ {result.summary}")' },
+      ];
+      if (/game|canvas|play|sprite/i.test(s)) return [
+        { c:'m', v:'  // claude-code: game scaffold' },
+        { c:'c', v:'  const canvas = document.getElementById("game");' },
+        { c:'g', v:'  const ctx    = canvas.getContext("2d");' },
+        { c:'c', v:'  let  player  = { x:100, y:300, speed:4 };' },
+        { c:'g', v:'' },
+        { c:'c', v:'  const loop = () => {' },
+        { c:'g', v:'    ctx.clearRect(0, 0, 800, 600);' },
+        { c:'c', v:'    drawPlayer(ctx, player);' },
+        { c:'g', v:'    requestAnimationFrame(loop);' },
+        { c:'c', v:'  };' },
+        { c:'g', v:'  loop(); // ✓ 60fps running' },
+      ];
+      return [
+        { c:'m', v:'  // claude-code: scaffolded component' },
+        { c:'c', v:'  import React, { useState, useEffect } from "react";' },
+        { c:'g', v:'' },
+        { c:'c', v:'  export default function App() {' },
+        { c:'g', v:'    const [data, setData] = useState(null);' },
+        { c:'c', v:'    useEffect(() => { fetchData().then(setData); }, []);' },
+        { c:'g', v:'    if (!data) return <Loading />;' },
+        { c:'c', v:'    return <main><View data={data} /></main>;' },
+        { c:'g', v:'  }  // ✓ npm start to run' },
+      ];
+    };
 
-      const run = () => {
-        setLines([]); setTyped(''); setPhase('typing');
-        const inputText = SCRIPT[0][1];
-        let delay = 600;
-
-        // Type the prompt character by character
-        for (let i = 0; i <= inputText.length; i++) {
-          const d = delay + i * 36;
-          addT(() => setTyped(inputText.slice(0, i)), d);
-        }
-        delay += inputText.length * 36 + 500;
-
-        // Commit input line, start output
-        addT(() => {
-          setPhase('running');
-          setTyped('');
-          setLines([{ t:'prompt', text: inputText }]);
-        }, delay);
-        delay += 300;
-
-        // Drip out the rest of the script
-        for (let i = 1; i < SCRIPT.length; i++) {
-          const [type, text, after] = SCRIPT[i];
-          addT(() => setLines(prev => [...prev, { t: type, text }]), delay);
-          delay += after + 55;
-        }
-
-        // Show idle cursor, then restart
-        addT(() => setPhase('idle'), delay + 200);
-        addT(() => { clear(); run(); }, delay + 4000);
-      };
-
-      useEffect(() => { run(); return clear; }, []);
+    function InteractiveTerminal() {
+      const idRef       = useRef(0);
+      const uid         = () => ++idRef.current;
+      const [history,   setHistory]   = useState([{ id:0, type:'system', lines:INIT_MSGS }]);
+      const [input,     setInput]     = useState('');
+      const [isRunning, setIsRunning] = useState(false);
+      const histRef     = useRef(null);
+      const inputRef    = useRef(null);
 
       useEffect(() => {
-        if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-      }, [lines, typed]);
+        if (histRef.current)
+          histRef.current.scrollTop = histRef.current.scrollHeight;
+      }, [history]);
 
-      const renderLine = (l, i) => {
-        if (l.t === 'blank') return <div key={i} className="t-blank" />;
-        const cls = { prompt:'t-cmd', out:'t-out', info:'t-info', file:'t-file', ok:'t-ok' }[l.t] || 't-out';
-        if (l.t === 'prompt') return (
-          <div key={i} className="tl"><span className="t-prompt">❯ </span><span className={cls}>{l.text}</span></div>
-        );
-        return <div key={i} className={`tl ${cls}`}>{l.text}</div>;
+      useEffect(() => { inputRef.current?.focus(); }, []);
+
+      const hasWord = (text, list) =>
+        list.some(w => text.toLowerCase().includes(w.toLowerCase()));
+
+      /* Drips output lines with 600 ms between each step */
+      const runSimulation = (raw) => {
+        setIsRunning(true);
+
+        const steps = [
+          { delay: 600,  lines: [{ c:'c', v:'> Analyzing prompt and context...' }] },
+          { delay: 1200, lines: [{ c:'c', v:'> Initializing autonomous agent...' }] },
+          { delay: 1800, lines: [{ c:'c', v:'> Writing code...' }] },
+          { delay: 2500, lines: [
+            { c:'m', v:'  ┌─ output ─────────────────────────────────────┐' },
+            ...getMockCode(raw),
+            { c:'m', v:'  └───────────────────────────────────────┘' },
+          ]},
+          { delay: 3300, lines: [
+            { c:'g', v:'> Task complete! 🚀' },
+            { c:'m', v:'' },
+          ]},
+        ];
+
+        steps.forEach(({ delay, lines }) => {
+          setTimeout(() => {
+            setHistory(prev => [...prev, { id:uid(), type:'output', lines }]);
+            if (delay === 3300) {
+              setIsRunning(false);
+              setTimeout(() => inputRef.current?.focus(), 60);
+            }
+          }, delay);
+        });
+      };
+
+      const submit = () => {
+        const raw = input.trim();
+        if (!raw || isRunning) return;
+        const cmd = raw.toLowerCase();
+        setInput('');
+
+        const inputEntry = { id:uid(), type:'input', cmd:raw };
+
+        /* Greetings */
+        if (hasWord(cmd, GREET_WORDS)) {
+          return setHistory(prev => [...prev, inputEntry, { id:uid(), type:'output', lines:[
+            { c:'g', v:'Hello! I am Claude Code.' },
+            { c:'g', v:'How can I help you build today?' },
+            { c:'m', v:"Type 'help' to see what I can do." },
+          ]}]);
+        }
+
+        /* Built-in commands */
+        if (cmd === 'clear') {
+          return setHistory([{ id:uid(), type:'system', lines:INIT_MSGS }]);
+        }
+        if (CMD_RESPONSES[cmd]) {
+          return setHistory(prev => [...prev, inputEntry,
+            { id:uid(), type:'output', lines:CMD_RESPONSES[cmd] }]);
+        }
+
+        /* Action keywords → agent simulation */
+        if (hasWord(raw, ACTION_WORDS)) {
+          setHistory(prev => [...prev, inputEntry]);
+          return runSimulation(raw);
+        }
+
+        /* Fallback */
+        setHistory(prev => [...prev, inputEntry, { id:uid(), type:'output', lines:[
+          { c:'g', v:`Command not found: '${raw}'.` },
+          { c:'m', v:"Type 'help' for commands, or try: build a website" },
+        ]}]);
       };
 
       return (
-        <div className="terminal-wrap">
-          <div className="terminal">
-            <div className="term-bar">
-              <div className="tdot tdot-r" /><div className="tdot tdot-y" /><div className="tdot tdot-g" />
-              <div className="term-title">claude — bash — 96×30</div>
-            </div>
-            <div className="term-body" ref={bodyRef}>
-              {lines.map(renderLine)}
-              {phase === 'typing' && (
-                <div className="tl">
-                  <span className="t-prompt">❯ </span>
-                  <span className="t-cmd">{typed}</span>
-                  <span className="cursor" />
-                </div>
-              )}
-              {phase === 'idle' && (
-                <div className="tl"><span className="t-prompt">❯ </span><span className="cursor" /></div>
-              )}
+        <div className="iterm">
+          <div className="term-bar">
+            <div className="tdot tdot-r" />
+            <div className="tdot tdot-y" />
+            <div className="tdot tdot-g" />
+            <div className="term-title">
+              {isRunning ? 'claude-code — agent running… ◉' : 'claude-code — interactive terminal — try me!'}
             </div>
           </div>
 
-          <div className="term-pills">
-            {[
-              { icon:'🧠', label:<><strong>Full codebase context</strong> — not just snippets</> },
-              { icon:'⚡', label:<><strong>Runs real commands</strong> — npm, git, bash</> },
-              { icon:'🔁', label:<><strong>Self-correcting</strong> — retries on failure</> },
-            ].map((p,i) => (
-              <div key={i} className="pill">
-                <span className="pill-icon">{p.icon}</span>
-                <span className="pill-label">{p.label}</span>
+          <div
+            className="iterm-history"
+            ref={histRef}
+            onClick={() => !isRunning && inputRef.current?.focus()}
+          >
+            {history.map(entry => {
+              if (entry.type === 'input') return (
+                <div key={entry.id} className="iterm-row iterm-row--cmd">
+                  <span className="iterm-prompt-label">~/claude-code $</span>
+                  <span className="iterm-in">{entry.cmd}</span>
+                </div>
+              );
+              return entry.lines.map((line, i) => (
+                <div key={`${entry.id}-${i}`} className={`iterm-row iterm-${line.c}`}>
+                  {line.v || ' '}
+                </div>
+              ));
+            })}
+            {isRunning && (
+              <div className="iterm-row" style={{marginTop:'0.2rem'}}>
+                <span className="cursor" />
               </div>
-            ))}
+            )}
+          </div>
+
+          <div className={`iterm-inputline${isRunning ? ' iterm-running' : ''}`}>
+            <span className="iterm-prompt-label">~/claude-code $</span>
+            <input
+              ref={inputRef}
+              className="iterm-input"
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+              placeholder={isRunning ? 'Agent is working… please wait' : 'try: build a landing page'}
+              disabled={isRunning}
+              spellCheck={false}
+              autoComplete="off"
+              autoCapitalize="off"
+            />
           </div>
         </div>
       );
     }
 
     function HowItWorks() {
+      const { t } = useLang();
       const ref = useRef(null);
       useEffect(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
@@ -1081,13 +1521,14 @@
 
       return (
         <div id="how-it-works" className="section-wrap" ref={ref}>
-          <div className="section-label gs-fade">02 — How It Works</div>
-          <h2 className="section-title gs-fade">Talk to your terminal.<br />Watch code appear.</h2>
-          <p className="section-sub gs-fade">
-            Type a plain-English command. Claude reads your project, decides what to build,
-            writes the code, runs it, and iterates until everything passes.
-          </p>
-          <div className="gs-fade"><TerminalDemo /></div>
+          <div className="section-label gs-fade">{t('s02Label')}</div>
+          <h2 className="section-title gs-fade">
+            {t('s02Title').split('\n').map((line,i,a) => <React.Fragment key={i}>{line}{i<a.length-1&&<br/>}</React.Fragment>)}
+          </h2>
+          <p className="section-sub gs-fade">{t('s02Sub')}</p>
+          <div className="gs-fade" style={{maxWidth:'800px'}}>
+            <InteractiveTerminal />
+          </div>
         </div>
       );
     }
@@ -1096,27 +1537,16 @@
        FEATURES
     ══════════════════════════════════════ */
     const FEATURES = [
-      { v:'',           icon:'🧠', badge:'CORE.01', title:'Context Awareness',
-        desc:'Claude reads your entire repo before doing anything. It understands your file structure, imports, naming conventions, and existing patterns — so generated code actually fits.',
-        detail:'Up to 200k tokens of project context' },
-      { v:'fcard-glow-c', icon:'⚡', badge:'CORE.02', title:'Terminal Execution',
-        desc:'Not just autocomplete — Claude runs real shell commands. It installs packages, executes tests, reads stdout/stderr, and reacts to every output in real time.',
-        detail:'Full bash access inside your environment' },
-      { v:'fcard-glow-p', icon:'🔧', badge:'CORE.03', title:'Autonomous Bug Fixing',
-        desc:'When a build fails, Claude reads the error, traces the root cause, edits the right file, and re-runs — looping until your tests are green.',
-        detail:'Multi-step agentic retry loops' },
-      { v:'',           icon:'📁', badge:'CORE.04', title:'Full File System',
-        desc:'Read, create, edit, rename, delete — Claude can touch any file in your project using structured diff tools that show exactly what changed.',
-        detail:'Precise edit tools — no overwriting by accident' },
-      { v:'fcard-glow-c', icon:'🔀', badge:'CORE.05', title:'Git Integration',
-        desc:'Claude commits, branches, writes meaningful commit messages, and can open pull requests — with full awareness of your git history and diff.',
-        detail:'git-native: status, commit, push, PR' },
-      { v:'fcard-glow-p', icon:'🔒', badge:'CORE.06', title:'Permission-Safe',
-        desc:"Every tool call is surfaced to you. Approve or deny file edits, shell commands, network requests. You're always the last line of defense.",
-        detail:'Human-in-the-loop — configurable trust levels' },
+      { v:'',             icon:'🧠', badge:'CORE.01', tk:'f01t', dk:'f01d', xk:'f01x' },
+      { v:'fcard-glow-c', icon:'⚡', badge:'CORE.02', tk:'f02t', dk:'f02d', xk:'f02x' },
+      { v:'fcard-glow-p', icon:'🔧', badge:'CORE.03', tk:'f03t', dk:'f03d', xk:'f03x' },
+      { v:'',             icon:'📁', badge:'CORE.04', tk:'f04t', dk:'f04d', xk:'f04x' },
+      { v:'fcard-glow-c', icon:'🔀', badge:'CORE.05', tk:'f05t', dk:'f05d', xk:'f05x' },
+      { v:'fcard-glow-p', icon:'🔒', badge:'CORE.06', tk:'f06t', dk:'f06d', xk:'f06x' },
     ];
 
     function Features() {
+      const { t } = useLang();
       const ref = useRef(null);
       useEffect(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
@@ -1128,21 +1558,20 @@
 
       return (
         <div id="features" className="section-wrap" ref={ref}>
-          <div className="section-label gs-fade">03 — Core Capabilities</div>
-          <h2 className="section-title gs-fade">Built different.<br />Built for devs.</h2>
-          <p className="section-sub gs-fade">
-            Not a chat window, not a plugin. A genuine AI collaborator that owns tasks
-            from first prompt to final commit.
-          </p>
+          <div className="section-label gs-fade">{t('s03Label')}</div>
+          <h2 className="section-title gs-fade">
+            {t('s03Title').split('\n').map((line,i,a) => <React.Fragment key={i}>{line}{i<a.length-1&&<br/>}</React.Fragment>)}
+          </h2>
+          <p className="section-sub gs-fade">{t('s03Sub')}</p>
           <div className="features-grid">
             {FEATURES.map((f, i) => (
               <div key={i} className={`fcard ${f.v}`}>
                 <div className="fcard-corner" />
                 <span className="fcard-icon">{f.icon}</span>
                 <div className="fcard-badge">{f.badge}</div>
-                <div className="fcard-title">{f.title}</div>
-                <p className="fcard-desc">{f.desc}</p>
-                <div className="fcard-detail">→ {f.detail}</div>
+                <div className="fcard-title">{t(f.tk)}</div>
+                <p className="fcard-desc">{t(f.dk)}</p>
+                <div className="fcard-detail">→ {t(f.xk)}</div>
               </div>
             ))}
           </div>
@@ -1154,35 +1583,26 @@
        HOW TO USE
     ══════════════════════════════════════ */
     const STEPS = [
-      { title:'Get a Claude Pro or Max subscription',
-        desc:'Claude Code requires an active Claude Pro or Claude Max plan. Visit claude.ai/upgrade, choose your plan, and complete checkout. Free accounts cannot access Claude Code.',
-        cmd:'claude.ai/upgrade' },
-      { title:'Install Claude Code',
-        desc:'Once subscribed, install the CLI globally via npm. Requires Node.js 18+ on your machine.',
-        cmd:'npm install -g @anthropic-ai/claude-code' },
-      { title:'Log in with your Claude account',
-        desc:'Run the CLI — it opens a browser window to authenticate with the same account your Pro or Max subscription is on.',
-        cmd:'claude' },
-      { title:'Navigate to your project',
-        desc:'Change into any existing codebase, or start fresh in an empty folder. Claude reads your project from here.',
-        cmd:'cd my-project' },
-      { title:'Give it a task and iterate',
-        desc:'Describe what you want in plain English. Claude writes code, runs commands, and fixes errors autonomously. Approve or steer each step.',
-        cmd:'claude "add dark mode support to this app"' },
+      { tk:'st1t', dk:'st1d', cmd:'claude.ai/upgrade' },
+      { tk:'st2t', dk:'st2d', cmd:'npm install -g @anthropic-ai/claude-code' },
+      { tk:'st3t', dk:'st3d', cmd:'claude' },
+      { tk:'st4t', dk:'st4d', cmd:'cd my-project' },
+      { tk:'st5t', dk:'st5d', cmd:'claude "add dark mode support to this app"' },
     ];
 
     const CMDS = [
-      { c:'claude',                      e:'Start interactive REPL session' },
-      { c:'claude "task"',               e:'One-shot task, then exit' },
-      { c:'claude --print "task"',       e:'Non-interactive, prints output' },
-      { c:'/help',                       e:'Show all slash commands' },
-      { c:'/clear',                      e:'Clear context, start fresh' },
-      { c:'/compact',                    e:'Compress context to save tokens' },
-      { c:'claude --model opus',         e:'Choose a specific Claude model' },
-      { c:'Shift + Tab',                 e:'Toggle auto-accept mode' },
+      { c:'claude',               ek:'cmd1e' },
+      { c:'claude "task"',        ek:'cmd2e' },
+      { c:'claude --print "task"',ek:'cmd3e' },
+      { c:'/help',                ek:'cmd4e' },
+      { c:'/clear',               ek:'cmd5e' },
+      { c:'/compact',             ek:'cmd6e' },
+      { c:'claude --model opus',  ek:'cmd7e' },
+      { c:'Shift + Tab',          ek:'cmd8e' },
     ];
 
     function HowToUse() {
+      const { t } = useLang();
       const ref = useRef(null);
       useEffect(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
@@ -1199,13 +1619,11 @@
       return (
         <div className="htu-wrap">
           <div id="get-started" className="htu-inner" ref={ref}>
-            <div className="section-label">04 — Get Started</div>
+            <div className="section-label">{t('s04Label')}</div>
             <h2 className="section-title" style={{marginBottom:'0.8rem'}}>
-              From zero to agentic<br />in 60 seconds.
+              {t('s04Title').split('\n').map((line,i,a) => <React.Fragment key={i}>{line}{i<a.length-1&&<br/>}</React.Fragment>)}
             </h2>
-            <p className="section-sub">
-              Five steps — starting with the subscription you need — to have Claude Code writing real code in your terminal.
-            </p>
+            <p className="section-sub">{t('s04Sub')}</p>
 
             <div className="htu-grid">
               {/* Steps */}
@@ -1217,9 +1635,9 @@
                       <div className="step-line" />
                     </div>
                     <div className="step-body">
-                      <div className="step-title">{s.title}</div>
-                      <p className="step-desc">{s.desc}</p>
-                      <code className="step-cmd">{s.cmd}</code>
+                      <div className="step-title">{t(s.tk)}</div>
+                      <p className="step-desc">{t(s.dk)}</p>
+                      <code className="step-cmd" dir="ltr">{s.cmd}</code>
                     </div>
                   </div>
                 ))}
@@ -1227,11 +1645,11 @@
 
               {/* Command reference */}
               <div className="cmd-card">
-                <div className="cmd-card-head">Quick Command Reference</div>
+                <div className="cmd-card-head">{t('cmdRef')}</div>
                 {CMDS.map((c, i) => (
                   <div key={i} className="cmd-row">
-                    <div className="cmd-row-text">{c.c}</div>
-                    <div className="cmd-row-explain">{c.e}</div>
+                    <div className="cmd-row-text" dir="ltr">{c.c}</div>
+                    <div className="cmd-row-explain">{t(c.ek)}</div>
                   </div>
                 ))}
               </div>
@@ -1245,9 +1663,10 @@
        FOOTER
     ══════════════════════════════════════ */
     function Footer() {
+      const { t } = useLang();
       return (
         <footer className="footer">
-          <p>Built with <em>Claude Code</em> — Anthropic's agentic AI developer — {new Date().getFullYear()}</p>
+          <p><em>Claude Code</em> — {t('footerText')} — {new Date().getFullYear()}</p>
           <p style={{marginTop:'0.4rem',opacity:0.45}}>docs.anthropic.com/en/docs/claude-code</p>
         </footer>
       );
@@ -1438,13 +1857,53 @@
       );
     }
 
+    /* ══════════════════════════════════════
+       SPOTLIGHT
+    ══════════════════════════════════════ */
+    function Spotlight() {
+      useEffect(() => {
+        // Touch / stylus devices have no cursor — the CSS media query handles them
+        if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+        const root = document.documentElement; // :root — variables inherit to body
+        let raf = null;
+
+        const onMove = (e) => {
+          if (raf) return;
+          raf = requestAnimationFrame(() => {
+            root.style.setProperty('--mouse-x', `${e.pageX}px`);
+            root.style.setProperty('--mouse-y', `${e.pageY}px`);
+            raf = null;
+          });
+        };
+
+        window.addEventListener('mousemove', onMove, { passive: true });
+        return () => {
+          window.removeEventListener('mousemove', onMove);
+          if (raf) cancelAnimationFrame(raf);
+        };
+      }, []);
+
+      return null; // no DOM element — gradient lives on body background
+    }
+
     function App() {
+      const [lang, setLang] = useState('en');
+      const t = (key) => TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.en[key] ?? key;
+
       useEffect(() => {
         if (window.gsap && window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
       }, []);
 
+      /* Apply RTL direction when switching to Hebrew */
+      useEffect(() => {
+        document.documentElement.dir  = lang === 'he' ? 'rtl' : 'ltr';
+        document.documentElement.lang = lang;
+      }, [lang]);
+
       return (
-        <>
+        <LangCtx.Provider value={{ lang, setLang, t }}>
+          <Spotlight />
           <Clawd />
           <Navbar />
           <Hero />
@@ -1456,7 +1915,7 @@
           <Features />
           <HowToUse />
           <Footer />
-        </>
+        </LangCtx.Provider>
       );
     }
 

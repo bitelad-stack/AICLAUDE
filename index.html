@@ -394,6 +394,51 @@
       );
     }
 
+    /* ─── TiltCard: mobile override ─── */
+    /* On touch devices there is no mouse, so 3D tilt is useless and actively
+       hurts scroll performance. Flatten the card completely and substitute a
+       static pulsing neon glow so it still looks premium. */
+    @media (hover: none), (pointer: coarse) {
+      .tilt-card {
+        perspective: none;
+        cursor: default;
+      }
+      .tilt-inner {
+        transform: none !important;   /* freeze — JS writes are also skipped */
+        transform-style: flat;
+        transition: none;
+        will-change: auto;
+        /* Static neon border + depth shadow */
+        border: 1px solid rgba(0, 255, 157, 0.35);
+        border-radius: 18px;
+        box-shadow:
+          0 0 18px rgba(0, 255, 157, 0.22),
+          0 0 50px rgba(0, 255, 157, 0.08),
+          0 10px 40px rgba(0, 0, 0, 0.55);
+        animation: tiltMobileGlow 3s ease-in-out infinite alternate;
+      }
+      /* Glass sheen and glare are meaningless without tilt — hide them */
+      .tilt-inner::before { display: none; }
+      .tilt-glare         { display: none; }
+    }
+
+    @keyframes tiltMobileGlow {
+      from {
+        box-shadow:
+          0 0 12px rgba(0, 255, 157, 0.18),
+          0 0 35px rgba(0, 255, 157, 0.06),
+          0 10px 40px rgba(0, 0, 0, 0.55);
+        border-color: rgba(0, 255, 157, 0.28);
+      }
+      to {
+        box-shadow:
+          0 0 28px rgba(0, 255, 157, 0.38),
+          0 0 65px rgba(0, 255, 157, 0.14),
+          0 10px 40px rgba(0, 0, 0, 0.55);
+        border-color: rgba(0, 255, 157, 0.55);
+      }
+    }
+
     /* ─── Section shared ─── */
     .section-wrap {
       padding: 6rem 3rem;
@@ -1090,6 +1135,9 @@
         const card  = cardRef.current;
         const inner = innerRef.current;
         if (!card || !inner) return;
+
+        // Touch / stylus devices have no hover — CSS handles their appearance
+        if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
         const MAX_TILT  = 22;   // max rotation degrees
         const MAX_GLARE = 0.42; // max glare opacity
